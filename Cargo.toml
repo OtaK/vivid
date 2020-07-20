@@ -1,0 +1,11 @@
+[package]
+name = "vivid"
+version = "0.1.0"
+authors = ["Mathieu Amiot <m.amiot@otak-arts.com>"]
+edition = "2018"
+description = "Smol utility to change digital vibrance / saturation when a program within a list starts"
+
+[dependencies]
+nvapi-hi = { path = "../nvapi-rs/hi" }
+pretty_env_logger = "0.4.0"
+log = "0.4.11"
