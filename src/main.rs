@@ -1,21 +1,12 @@
 #![allow(dead_code)]
+
 mod nvidia;
+mod adapter;
+mod config;
+mod error;
+use self::error::*;
 
-enum GpuVendor {
-    Nvidia,
-    Amd
-}
-
-enum SystemType {
-    Desktop,
-    Laptop,
-}
-
-pub struct Gpu {
-    sku: String,
-    vendor: GpuVendor,
-    system_type: SystemType,
-}
+mod foreground_watch;
 
 // TODO: Hook into windows to get the list of processes that are starting
 // TODO: Support rudimentary config files to have a "watchlist" and the vibrance that goes with it

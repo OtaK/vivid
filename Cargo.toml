@@ -6,6 +6,13 @@ edition = "2018"
 description = "Smol utility to change digital vibrance / saturation when a program within a list starts"
 
 [dependencies]
-nvapi-hi = { path = "../nvapi-rs/hi" }
-pretty_env_logger = "0.4.0"
-log = "0.4.11"
+nvapi-hi = { path = "../nvapi-rs/hi", default-features = false }
+pretty_env_logger = "0.4"
+log = "0.4"
+toml = "0.5"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0"
+anyhow = "1.0"
+winapi = { version = "0.3", features = ["winuser"] }
+sysinfo = "0.14"
+lazy_static = "1.4"
