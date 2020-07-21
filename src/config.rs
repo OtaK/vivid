@@ -22,4 +22,16 @@ impl Config {
         file.read_to_end(&mut file_contents)?;
         toml::from_slice(&file_contents).map_err(Into::into)
     }
+
+    pub fn test() -> Self {
+        Self {
+            desktop_vibrance: 50,
+            program_settings: vec![
+                Program {
+                    exe_name: "Code.exe".into(),
+                    vibrance: 90
+                }
+            ]
+        }
+    }
 }
