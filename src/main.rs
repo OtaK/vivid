@@ -66,18 +66,33 @@ fn main() -> error::VividResult<()> {
             break;
         }
         unsafe {
-            if winapi::um::winuser::PeekMessageW(
+            #[cfg(feature = "shell")]
+            if winapi::um::winuser::PeekMessageA(
                 &mut msg,
                 winapi::shared::ntdef::NULL as _,
                 0,
                 0,
-                winapi::um::winuser::PM_NOREMOVE,
+                winapi::um::winuser::PM_REMOVE,
             ) != 0
             {
                 break;
             }
+
+            // FIXME: This crashes from time to time?
+            #[cfg(not(feature = "shell"))]
+            if winapi::um::winuser::GetMessageA(
+                &mut msg,
+                winapi::shared::ntdef::NULL as _,
+                0,
+                0
+            ) != 0
+            {
+                break;
+            }
+
             winapi::um::winuser::TranslateMessage(&msg);
             winapi::um::winuser::DispatchMessageW(&msg);
+            log::trace!("message: {} = {}/{}", msg.message, msg.wParam, msg.lParam);
         }
     }
 
