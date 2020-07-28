@@ -5,6 +5,10 @@ authors = ["Mathieu Amiot <m.amiot@otak-arts.com>"]
 edition = "2018"
 description = "Smol utility to change digital vibrance / saturation when a program within a list starts"
 
+[features]
+default = []
+shell = ["ctrlc"]
+
 [dependencies]
 nvapi-hi = { path = "../nvapi-rs/hi", default-features = false }
 pretty_env_logger = "0.4"
@@ -14,6 +18,10 @@ serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 anyhow = "1.0"
 winapi = { version = "0.3", features = ["winuser", "shlobj", "impl-debug", "impl-default"] }
-sysinfo = "0.14"
+sysinfo = "0.15"
 lazy_static = "1.4"
-ctrlc = "3.1.5"
+ctrlc = { version = "3.1", optional = true }
+
+[profile.release]
+lto = "fat"
+codegen-units = 1

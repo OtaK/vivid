@@ -5,7 +5,7 @@ pub struct Amd {}
 
 impl Amd {
     pub fn new() -> VividResult<Self> {
-        Ok(Self {})
+        todo!()
     }
 }
 

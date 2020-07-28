@@ -1,8 +1,9 @@
+#![cfg_attr(not(feature = "shell"), windows_subsystem = "windows")]
+
 mod adapter;
 mod config;
 mod error;
 use self::error::*;
-use winapi::shared::ntdef::NULL;
 
 mod foreground_watch;
 
@@ -31,7 +32,7 @@ fn foreground_callback(args: foreground_watch::ForegroundWatcherEvent) {
         (*CONFIG).default_vibrance()
     };
 
-    log::trace!("vibrance: {}", vibrance);
+    log::trace!("Vibrance: old = {} / new = {}", previous_vibrance, vibrance);
     if vibrance != previous_vibrance {
         gpu.set_vibrance(vibrance).unwrap();
     }
@@ -40,12 +41,17 @@ fn foreground_callback(args: foreground_watch::ForegroundWatcherEvent) {
 fn main() -> error::VividResult<()> {
     pretty_env_logger::init();
 
+    #[cfg(feature = "shell")]
     let (quit_tx, quit_rx) = std::sync::mpsc::channel();
 
+    #[cfg(feature = "shell")]
     ctrlc::set_handler(move || {
         quit_tx.send(()).unwrap();
     })
     .expect("Error setting Ctrl-C handler");
+
+    // Touch config to avoid way too lazy loading
+    let _ = *CONFIG;
 
     let mut watcher = foreground_watch::ForegroundWatcher::new();
     watcher.add_event_callback(foreground_callback);
@@ -55,13 +61,14 @@ fn main() -> error::VividResult<()> {
     let mut msg = winapi::um::winuser::MSG::default();
     log::trace!("w32 waitloop started");
     loop {
+        #[cfg(feature = "shell")]
         if let Ok(_) = quit_rx.recv_timeout(std::time::Duration::from_secs(1)) {
             break;
         }
         unsafe {
             if winapi::um::winuser::PeekMessageW(
                 &mut msg,
-                NULL as _,
+                winapi::shared::ntdef::NULL as _,
                 0,
                 0,
                 winapi::um::winuser::PM_NOREMOVE,
