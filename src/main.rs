@@ -18,6 +18,8 @@ lazy_static::lazy_static! {
 }
 
 fn foreground_callback(args: foreground_watch::ForegroundWatcherEvent) {
+    let gpu = adapter::Gpu::detect_gpu().unwrap();
+    let previous_vibrance = gpu.get_vibrance().unwrap();
     log::trace!("callback args: {:#?}", args);
     let vibrance = if let Some(program) = (*CONFIG)
         .programs()
@@ -30,8 +32,9 @@ fn foreground_callback(args: foreground_watch::ForegroundWatcherEvent) {
     };
 
     log::trace!("vibrance: {}", vibrance);
-
-    // TODO: Inject vibrance into gpu
+    if vibrance != previous_vibrance {
+        gpu.set_vibrance(vibrance).unwrap();
+    }
 }
 
 fn main() -> error::VividResult<()> {

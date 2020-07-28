@@ -20,10 +20,10 @@ pub enum VividError {
     WindowsHookError(#[from] WindowsHookError),
     #[error(r#"Vivid detected both AMD and Nvidia drivers on your system.
 Please launch the app with the appropriate flag to choose which driver you use to display."#r)]
-    #[allow(dead_code)]
     DualDriversDetected,
+    #[error("Vivid couldn't load the driver API: {0}")]
+    DriverNotAvailable(std::io::Error),
     #[error("Vivid couldn't detect any GPU on your system. Is your computer okay?")]
-    #[allow(dead_code)]
     NoGpuDetected,
     #[error("Vivid couldn't detect any Displays on your system. How are you seeing this?")]
     NoDisplayDetected,
