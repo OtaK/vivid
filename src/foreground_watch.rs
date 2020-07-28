@@ -4,7 +4,10 @@
 
 use crate::error::{VividResult, WindowsHookError};
 use winapi::shared::windef::HWND;
-use winapi::{um::{winnt::LONG, winuser}, shared::{windef, minwindef::DWORD, ntdef::NULL}};
+use winapi::{
+    shared::{minwindef::DWORD, ntdef::NULL, windef},
+    um::{winnt::LONG, winuser},
+};
 
 lazy_static::lazy_static! {
     static ref CALLBACKS: std::sync::RwLock<Vec<fn(ForegroundWatcherEvent)>> = std::sync::RwLock::new(vec![]);
@@ -12,17 +15,17 @@ lazy_static::lazy_static! {
 
 #[derive(Debug, Clone)]
 pub struct ForegroundWatcherEvent {
-    hwnd: HWND,
-    process_id: usize,
-    process_exe: String,
-    process_path: std::path::PathBuf,
+    pub hwnd: HWND,
+    pub process_id: usize,
+    pub process_exe: String,
+    pub process_path: std::path::PathBuf,
 }
 
 #[derive(Default, Clone)]
 pub struct ForegroundWatcher {
     registered: bool,
     hook: Option<windef::HWINEVENTHOOK>,
-    proc: winuser::WINEVENTPROC
+    proc: winuser::WINEVENTPROC,
 }
 
 impl ForegroundWatcher {
@@ -45,14 +48,12 @@ impl ForegroundWatcher {
         let inner_hook = unsafe {
             winuser::SetWinEventHook(
                 winuser::EVENT_SYSTEM_FOREGROUND,
-                // winuser::EVENT_MIN,
                 winuser::EVENT_SYSTEM_FOREGROUND,
-                // winuser::EVENT_MAX,
                 NULL as _,
                 self.proc,
                 0,
                 0,
-                winuser::WINEVENT_OUTOFCONTEXT
+                winuser::WINEVENT_OUTOFCONTEXT,
             )
         };
 
@@ -80,7 +81,7 @@ impl ForegroundWatcher {
                 log::error!("ForegroundWatcher::unregister() -> failed");
                 self.proc = None;
                 self.registered = false;
-                return Err(WindowsHookError::UnhookWinEvent.into())
+                return Err(WindowsHookError::UnhookWinEvent.into());
             }
         }
 
@@ -96,18 +97,31 @@ impl ForegroundWatcher {
         id_event_thread: DWORD,
         dwms_event_time: DWORD,
     ) {
-        use sysinfo::{SystemExt as _, ProcessExt as _};
-        log::trace!("ForegroundWatcher::event_proc({:?}, {}, {:?}, {}, {}, {}, {})", event_hook, event, hwnd, id_object, id_child, id_event_thread, dwms_event_time);
+        use sysinfo::{ProcessExt as _, SystemExt as _};
+        log::trace!(
+            "ForegroundWatcher::event_proc({:?}, {}, {:?}, {}, {}, {}, {})",
+            event_hook,
+            event,
+            hwnd,
+            id_object,
+            id_child,
+            id_event_thread,
+            dwms_event_time
+        );
         let mut process_id = 0u32;
         let _ = winapi::um::winuser::GetWindowThreadProcessId(hwnd, &mut process_id);
         log::trace!("Found process id #{} from hwnd", process_id);
 
-        let mut system = sysinfo::System::new_with_specifics(sysinfo::RefreshKind::default().with_processes());
+        let mut system =
+            sysinfo::System::new_with_specifics(sysinfo::RefreshKind::default().with_processes());
 
         let _ = system.refresh_process(process_id as usize);
         if let Some(process) = system.get_process(process_id as usize) {
-            log::trace!("Found process {} [{}]", process.name(), process.exe().display());
-            // TODO: Find a way to trigger the vivid-land callback
+            log::trace!(
+                "Found process {} [{}]",
+                process.name(),
+                process.exe().display()
+            );
             if let Ok(callbacks) = CALLBACKS.read() {
                 let event = ForegroundWatcherEvent {
                     hwnd,
@@ -126,6 +140,10 @@ impl Drop for ForegroundWatcher {
     fn drop(&mut self) {
         while self.registered {
             let _ = self.unregister();
+        }
+
+        if let Ok(mut callbacks) = CALLBACKS.write() {
+            callbacks.clear();
         }
     }
 }

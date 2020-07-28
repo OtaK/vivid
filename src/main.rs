@@ -1,15 +1,38 @@
-#![allow(dead_code)]
-
 mod adapter;
 mod config;
 mod error;
-use winapi::shared::ntdef::NULL;
 use self::error::*;
+use winapi::shared::ntdef::NULL;
 
 mod foreground_watch;
 
-// TODO: Support rudimentary config files to have a "watchlist" and the vibrance that goes with it
 // TODO: Support AMD GPUs
+
+lazy_static::lazy_static! {
+    static ref CONFIG: config::Config = {
+        //let config = config::Config::load().unwrap_or_default();
+        let config = config::Config::test();
+        log::trace!("Config loaded: {:#?}", config);
+        config
+    };
+}
+
+fn foreground_callback(args: foreground_watch::ForegroundWatcherEvent) {
+    log::trace!("callback args: {:#?}", args);
+    let vibrance = if let Some(program) = (*CONFIG)
+        .programs()
+        .iter()
+        .find(|&program| program.exe_name == args.process_exe)
+    {
+        program.vibrance
+    } else {
+        (*CONFIG).default_vibrance()
+    };
+
+    log::trace!("vibrance: {}", vibrance);
+
+    // TODO: Inject vibrance into gpu
+}
 
 fn main() -> error::VividResult<()> {
     pretty_env_logger::init();
@@ -18,10 +41,11 @@ fn main() -> error::VividResult<()> {
 
     ctrlc::set_handler(move || {
         quit_tx.send(()).unwrap();
-    }).expect("Error setting Ctrl-C handler");
+    })
+    .expect("Error setting Ctrl-C handler");
 
     let mut watcher = foreground_watch::ForegroundWatcher::new();
-    watcher.add_event_callback(test_cb);
+    watcher.add_event_callback(foreground_callback);
     watcher.register().unwrap();
     log::trace!("is watcher registered? -> {}", watcher.is_registered());
 
@@ -32,7 +56,14 @@ fn main() -> error::VividResult<()> {
             break;
         }
         unsafe {
-            if winapi::um::winuser::PeekMessageW(&mut msg, NULL as _, 0, 0, winapi::um::winuser::PM_REMOVE) != 0 {
+            if winapi::um::winuser::PeekMessageW(
+                &mut msg,
+                NULL as _,
+                0,
+                0,
+                winapi::um::winuser::PM_NOREMOVE,
+            ) != 0
+            {
                 break;
             }
             winapi::um::winuser::TranslateMessage(&msg);
@@ -42,8 +73,4 @@ fn main() -> error::VividResult<()> {
 
     log::info!("Exiting...");
     Ok(())
-}
-
-fn test_cb(args: foreground_watch::ForegroundWatcherEvent) {
-    log::trace!("callback args: {:#?}", args);
 }
