@@ -41,6 +41,7 @@ fn foreground_callback(args: &foreground_watch::ForegroundWatcherEvent) {
     }
 }
 
+// FIXME: 11-12 threads ?????
 fn main() -> error::VividResult<()> {
     pretty_env_logger::init();
 
@@ -53,8 +54,9 @@ fn main() -> error::VividResult<()> {
     })
     .expect("Error setting Ctrl-C handler");
 
-    // Touch config to avoid way too lazy loading
+    // Touch config and GPU to avoid way too lazy loading
     let _ = *CONFIG;
+    let _ = *GPU;
 
     let mut watcher = foreground_watch::ForegroundWatcher::new();
     watcher.add_event_callback(foreground_callback);
