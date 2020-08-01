@@ -1,19 +1,19 @@
-// SetWinEventHook
-// UnhookWinEvent
-// sysinfo::System::get_process(pid) -> process inspect
-
-use crate::error::{VividResult, WindowsHookError};
+use crate::error::{VividResult, WindowsHookError, VividError};
 use winapi::shared::windef::HWND;
 use winapi::{
     shared::{minwindef::DWORD, ntdef::NULL, windef},
     um::{winnt::LONG, winuser},
 };
+use sysinfo::SystemExt as _;
 
 lazy_static::lazy_static! {
-    static ref CALLBACKS: std::sync::RwLock<Vec<fn(ForegroundWatcherEvent)>> = std::sync::RwLock::new(vec![]);
+    static ref CALLBACKS: std::sync::RwLock<Vec<fn(&ForegroundWatcherEvent)>> = std::sync::RwLock::new(vec![]);
+    static ref SYSTEM: std::sync::RwLock<sysinfo::System> = std::sync::RwLock::new(
+        sysinfo::System::new_with_specifics(sysinfo::RefreshKind::default().with_processes())
+    );
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ForegroundWatcherEvent {
     pub hwnd: HWND,
     pub process_id: usize,
@@ -33,7 +33,7 @@ impl ForegroundWatcher {
         Self::default()
     }
 
-    pub fn add_event_callback(&mut self, cb: fn(ForegroundWatcherEvent)) {
+    pub fn add_event_callback(&mut self, cb: fn(&ForegroundWatcherEvent)) {
         if let Ok(mut cb_vec) = CALLBACKS.write() {
             cb_vec.push(cb);
         }
@@ -97,7 +97,7 @@ impl ForegroundWatcher {
         id_event_thread: DWORD,
         dwms_event_time: DWORD,
     ) {
-        use sysinfo::{ProcessExt as _, SystemExt as _};
+        use sysinfo::{ProcessExt as _};
         log::trace!(
             "ForegroundWatcher::event_proc({:?}, {}, {:?}, {}, {}, {}, {})",
             event_hook,
@@ -110,28 +110,34 @@ impl ForegroundWatcher {
         );
         let mut process_id = 0u32;
         let _ = winapi::um::winuser::GetWindowThreadProcessId(hwnd, &mut process_id);
+        let process_id = process_id as usize;
         log::trace!("Found process id #{} from hwnd", process_id);
 
-        let mut system =
-            sysinfo::System::new_with_specifics(sysinfo::RefreshKind::default().with_processes());
+        let inspection_result = (*SYSTEM)
+            .write()
+            .and_then(|mut system| {
+                let _ = system.refresh_process(process_id);
+                Ok(system.get_process(process_id).map(move |process| {
+                    log::trace!(
+                        "Found process {} [{}]",
+                        process.name(),
+                        process.exe().display()
+                    );
+                    ForegroundWatcherEvent {
+                        hwnd,
+                        process_id,
+                        process_exe: process.name().into(),
+                        process_path: process.exe().into(),
+                    }
+                }))
+            });
 
-        let _ = system.refresh_process(process_id as usize);
-        if let Some(process) = system.get_process(process_id as usize) {
-            log::trace!(
-                "Found process {} [{}]",
-                process.name(),
-                process.exe().display()
-            );
-            if let Ok(callbacks) = CALLBACKS.read() {
-                let event = ForegroundWatcherEvent {
-                    hwnd,
-                    process_id: process_id as usize,
-                    process_exe: process.name().into(),
-                    process_path: process.exe().to_path_buf(),
-                };
-
-                callbacks.iter().for_each(|f| f(event.clone()));
-            }
+        match inspection_result {
+            Ok(Some(event)) => if let Ok(callbacks) = CALLBACKS.read() {
+                callbacks.iter().for_each(|f| f(&event));
+            },
+            Ok(None) => log::error!("{}", VividError::ProcessNotAvailable(process_id)),
+            _ => {}
         }
     }
 }

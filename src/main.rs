@@ -18,7 +18,7 @@ lazy_static::lazy_static! {
     };
 }
 
-fn foreground_callback(args: foreground_watch::ForegroundWatcherEvent) {
+fn foreground_callback(args: &foreground_watch::ForegroundWatcherEvent) {
     let gpu = adapter::Gpu::detect_gpu().unwrap();
     let previous_vibrance = gpu.get_vibrance().unwrap();
     log::trace!("callback args: {:#?}", args);

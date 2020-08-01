@@ -4,6 +4,7 @@ const DEFAULT_CONFIG_FILENAME: &str = "vivid.toml";
 pub struct Program {
     pub exe_name: String,
     pub vibrance: u8,
+    //pub fullscreen_only: bool
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -39,6 +40,7 @@ impl Config {
             program_settings: vec![Program {
                 exe_name: "Code.exe".into(),
                 vibrance: 90,
+                //fullscreen_only: false,
             }],
         }
     }
