@@ -16,11 +16,14 @@ lazy_static::lazy_static! {
         log::trace!("Config loaded: {:#?}", config);
         config
     };
+
+    static ref GPU: std::sync::RwLock<adapter::Gpu> = std::sync::RwLock::new(adapter::Gpu::detect_gpu().unwrap());
 }
 
+// FIXME: This is heavy as heck and very resource heavy. Find a correct way to cache the GPU detection call
+// FIXME: Without the need of unsafe impl Send/Sync for Gpu
 fn foreground_callback(args: &foreground_watch::ForegroundWatcherEvent) {
-    let gpu = adapter::Gpu::detect_gpu().unwrap();
-    let previous_vibrance = gpu.get_vibrance().unwrap();
+    let previous_vibrance = (*GPU).read().unwrap().get_vibrance().unwrap();
     log::trace!("callback args: {:#?}", args);
     let vibrance = if let Some(program) = (*CONFIG)
         .programs()
@@ -34,7 +37,7 @@ fn foreground_callback(args: &foreground_watch::ForegroundWatcherEvent) {
 
     log::trace!("Vibrance: old = {} / new = {}", previous_vibrance, vibrance);
     if vibrance != previous_vibrance {
-        gpu.set_vibrance(vibrance).unwrap();
+        (*GPU).read().unwrap().set_vibrance(vibrance).unwrap();
     }
 }
 

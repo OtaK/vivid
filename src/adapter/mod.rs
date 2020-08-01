@@ -34,6 +34,9 @@ pub struct Gpu {
     pub adapter: Box<dyn VibranceAdapter>,
 }
 
+unsafe impl Send for Gpu {}
+unsafe impl Sync for Gpu {}
+
 impl Gpu {
     pub fn detect_gpu() -> VividResult<Self> {
         // SystemX86 = D65231B0-B2F1-4857-A4CE-A8E7C6EA7D27
