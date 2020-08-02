@@ -22,6 +22,6 @@ structopt = { version = "0.3", features = ["paw"], default-features = false }
 paw = "1.0"
 
 [profile.release]
-lto = "thin"
+lto = true
 codegen-units = 1
 debug-assertions = false

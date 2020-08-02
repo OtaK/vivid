@@ -1,12 +1,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+// TODO: Support AMD GPUs
+
 mod adapter;
 mod config;
 mod foreground_watch;
 mod foreground_callback;
 mod w32_msgloop;
-mod  w32_ctrlc;
-// mod w32_threadpool;
+#[cfg(debug_assertions)]
+mod w32_ctrlc;
 
 mod error;
 use self::error::*;
@@ -21,7 +23,6 @@ struct Opts {
     edit: bool
 }
 
-// TODO: Support AMD GPUs
 lazy_static::lazy_static! {
     pub static ref CONFIG: config::Config = config::Config::load().unwrap_or_default();
 
@@ -38,7 +39,6 @@ fn main(opts: Opts) -> error::VividResult<()> {
         config::Config::edit()?;
         return Ok(());
     }
-    //unsafe { w32_threadpool::disable_w32_threadpool() }?;
 
     // Touch config and GPU to avoid way too lazy loading
     log::info!("current vibrance is: {}", (*GPU).as_ref()?.read().get_vibrance()?);
@@ -50,12 +50,10 @@ fn main(opts: Opts) -> error::VividResult<()> {
     log::trace!("is watcher registered? -> {}", watcher.is_registered());
 
     let mut msg = unsafe { std::mem::zeroed() };
-    log::trace!("w32 waitloop started");
     #[cfg(debug_assertions)]
     unsafe { w32_ctrlc::init_ctrlc()?; }
 
-
-    //unsafe { w32_threadpool::cleanup_w32_threadpool() }?;
+    log::trace!("w32 waitloop started");
     loop {
         w32_msgloop::read_message(&mut msg)?;
         log::trace!("Got W32 Message: {}", msg.message);

@@ -97,17 +97,6 @@ impl Config {
         }
     }
 
-    pub fn test() -> Self {
-        Self {
-            desktop_vibrance: 50,
-            program_settings: vec![Program {
-                exe_name: "Code.exe".into(),
-                vibrance: 90,
-                fullscreen_only: None,
-            }],
-        }
-    }
-
     pub fn programs(&self) -> &Vec<Program> {
         &self.program_settings
     }
