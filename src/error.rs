@@ -20,6 +20,10 @@ pub enum VividError {
     DeserializeError(#[from] toml::de::Error),
     #[error(transparent)]
     WindowsHookError(#[from] WindowsHookError),
+    #[error(transparent)]
+    WindowsMessageLoopError(std::io::Error),
+    #[error(transparent)]
+    WindowsOtherError(std::io::Error),
     #[error(r#"Vivid detected both AMD and Nvidia drivers on your system.
 Please launch the app with the appropriate flag to choose which driver you use to display."#r)]
     DualDriversDetected,
@@ -33,6 +37,16 @@ Please launch the app with the appropriate flag to choose which driver you use t
     NvAPIError(#[from] nvapi_hi::sys::Status),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
+}
+
+impl VividError {
+    pub fn message_loop_error() -> Self {
+        Self::WindowsMessageLoopError(std::io::Error::last_os_error())
+    }
+
+    pub fn windows_error() -> Self {
+        Self::WindowsOtherError(std::io::Error::last_os_error())
+    }
 }
 
 pub type VividResult<T> = Result<T, VividError>;

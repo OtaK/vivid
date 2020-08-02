@@ -5,11 +5,18 @@ mod nvidia;
 
 #[inline(always)]
 fn dll_exists(path: *const winapi::ctypes::c_char) -> bool {
-    let hwnd = unsafe { winapi::um::libloaderapi::LoadLibraryA(path) };
+    let hwnd = unsafe { winapi::um::libloaderapi::LoadLibraryExA(
+        path,
+        winapi::shared::ntdef::NULL,
+        winapi::um::libloaderapi::LOAD_LIBRARY_AS_DATAFILE | winapi::um::libloaderapi::LOAD_LIBRARY_AS_IMAGE_RESOURCE
+    )};
     if hwnd.is_null() {
         false
     } else {
-        unsafe { winapi::um::libloaderapi::FreeLibrary(hwnd); }
+        unsafe {
+            winapi::um::libloaderapi::DisableThreadLibraryCalls(hwnd);
+            winapi::um::libloaderapi::FreeLibrary(hwnd);
+        }
         true
     }
 }

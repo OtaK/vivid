@@ -126,11 +126,18 @@ impl ForegroundWatcher {
                     process.name(),
                     process.exe().display()
                 );
+                let process_path: std::path::PathBuf = process.exe().into();
+                let mut process_exe: String = process.name().into();
+                if process_exe.len() == 0 {
+                    if let Some(exe_name) = process_path.file_name().and_then(std::ffi::OsStr::to_str) {
+                        process_exe.push_str(exe_name);
+                    }
+                }
                 ForegroundWatcherEvent {
                     hwnd,
                     process_id,
-                    process_exe: process.name().into(),
-                    process_path: process.exe().into(),
+                    process_exe,
+                    process_path,
                 }
             });
 
