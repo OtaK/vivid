@@ -4,7 +4,7 @@ const DEFAULT_CONFIG_FILENAME: &str = "vivid.toml";
 pub struct Program {
     pub exe_name: String,
     pub vibrance: u8,
-    //pub fullscreen_only: bool
+    pub fullscreen_only: Option<bool>
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -27,7 +27,7 @@ impl Config {
     pub fn load() -> crate::VividResult<Self> {
         use std::io::Read as _;
         let mut path = std::env::current_exe()?;
-        path.push(DEFAULT_CONFIG_FILENAME);
+        path.set_file_name(DEFAULT_CONFIG_FILENAME);
         let mut file = std::fs::File::open(path)?;
         let mut file_contents = vec![];
         file.read_to_end(&mut file_contents)?;
@@ -40,7 +40,7 @@ impl Config {
             program_settings: vec![Program {
                 exe_name: "Code.exe".into(),
                 vibrance: 90,
-                //fullscreen_only: false,
+                fullscreen_only: None,
             }],
         }
     }

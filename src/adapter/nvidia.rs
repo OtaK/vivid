@@ -1,10 +1,19 @@
-use crate::error::{VividError, VividResult};
+use crate::arcmutex;
+use crate::{ArcMutex, error::{VividError, VividResult}};
 use nvapi_hi::{Display, Gpu};
 
+#[cfg(all(windows, target_pointer_width = "32"))]
+pub const LIBRARY_NAME: &[u8; 10] = b"nvapi.dll\0";
+#[cfg(all(windows, target_pointer_width = "64"))]
+pub const LIBRARY_NAME: &[u8; 12] = b"nvapi64.dll\0";
+
 pub struct Nvidia {
-    gpu: Gpu,
+    gpu: ArcMutex<Gpu>,
     displays: Vec<Display>,
 }
+
+unsafe impl Send for Nvidia {}
+unsafe impl Sync for Nvidia {}
 
 impl std::fmt::Debug for Nvidia {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -16,11 +25,13 @@ impl std::fmt::Debug for Nvidia {
 }
 
 impl Nvidia {
-    #[allow(dead_code)]
     pub fn new() -> VividResult<Self> {
         for gpu in Gpu::enumerate()? {
             let displays = gpu.connected_displays()?;
-            return Ok(Self { gpu, displays });
+            return Ok(Self {
+                gpu: arcmutex(gpu),
+                displays,
+            });
         }
 
         Err(VividError::NoGpuDetected)
@@ -45,7 +56,7 @@ impl super::VibranceAdapter for Nvidia {
     }
 
     fn get_sku(&self) -> VividResult<String> {
-        Ok(self.gpu.info()?.name)
+        Ok(self.gpu.lock().info()?.name)
     }
 
     fn get_vendor(&self) -> VividResult<super::GpuVendor> {
@@ -53,7 +64,7 @@ impl super::VibranceAdapter for Nvidia {
     }
 
     fn get_system_type(&self) -> VividResult<super::SystemType> {
-        Ok(match self.gpu.info()?.system_type {
+        Ok(match self.gpu.lock().info()?.system_type {
             nvapi_hi::SystemType::Desktop | nvapi_hi::SystemType::Unknown => {
                 super::SystemType::Desktop
             }

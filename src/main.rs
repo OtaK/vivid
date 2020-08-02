@@ -1,11 +1,14 @@
-#![cfg_attr(not(feature = "shell"), windows_subsystem = "windows")]
+//#![cfg_attr(not(feature = "shell"), windows_subsystem = "windows")]
 
 mod adapter;
 mod config;
+mod foreground_watch;
+
 mod error;
 use self::error::*;
 
-mod foreground_watch;
+pub(crate) type ArcMutex<T> = std::sync::Arc<parking_lot::Mutex<T>>;
+pub(crate) fn arcmutex<T: Into<parking_lot::Mutex<T>>>(x: T) -> ArcMutex<T> { std::sync::Arc::new(x.into()) }
 
 // TODO: Support AMD GPUs
 
@@ -17,31 +20,49 @@ lazy_static::lazy_static! {
         config
     };
 
-    static ref GPU: std::sync::RwLock<adapter::Gpu> = std::sync::RwLock::new(adapter::Gpu::detect_gpu().unwrap());
+    static ref GPU: VividResult<parking_lot::RwLock<adapter::Gpu>> = {
+        Ok(parking_lot::RwLock::new(adapter::Gpu::detect_gpu()?))
+    };
 }
 
-// FIXME: This is heavy as heck and very resource heavy. Find a correct way to cache the GPU detection call
-// FIXME: Without the need of unsafe impl Send/Sync for Gpu
-fn foreground_callback(args: &foreground_watch::ForegroundWatcherEvent) {
-    let previous_vibrance = (*GPU).read().unwrap().get_vibrance().unwrap();
+fn foreground_callback(args: &foreground_watch::ForegroundWatcherEvent) -> VividResult<()> {
+    let gpu = (*GPU).as_ref()?;
+    let previous_vibrance = gpu.read().get_vibrance()?;
     log::trace!("callback args: {:#?}", args);
-    let vibrance = if let Some(program) = (*CONFIG)
+    let (vibrance, fullscreen_only) = if let Some(program) = (*CONFIG)
         .programs()
         .iter()
         .find(|&program| program.exe_name == args.process_exe)
     {
-        program.vibrance
+        (program.vibrance, program.fullscreen_only.unwrap_or_default())
     } else {
-        (*CONFIG).default_vibrance()
+        ((*CONFIG).default_vibrance(), false)
+    };
+
+    let apply = if fullscreen_only {
+        use winapi::um::shellapi;
+        let mut notification_state: shellapi::QUERY_USER_NOTIFICATION_STATE = shellapi::QUERY_USER_NOTIFICATION_STATE::default();
+        let api_result = unsafe { shellapi::SHQueryUserNotificationState(&mut notification_state) };
+        if api_result == winapi::shared::winerror::S_OK {
+            match notification_state {
+                shellapi::QUNS_RUNNING_D3D_FULL_SCREEN | shellapi::QUNS_PRESENTATION_MODE => true,
+                _ => false
+            }
+        } else {
+            false
+        }
+    } else {
+        true
     };
 
     log::trace!("Vibrance: old = {} / new = {}", previous_vibrance, vibrance);
-    if vibrance != previous_vibrance {
-        (*GPU).read().unwrap().set_vibrance(vibrance).unwrap();
+    if apply && vibrance != previous_vibrance {
+        gpu.read().set_vibrance(vibrance)?;
     }
+
+    Ok(())
 }
 
-// FIXME: 11-12 threads ?????
 fn main() -> error::VividResult<()> {
     pretty_env_logger::init();
 
@@ -50,7 +71,7 @@ fn main() -> error::VividResult<()> {
 
     #[cfg(feature = "shell")]
     ctrlc::set_handler(move || {
-        quit_tx.send(()).unwrap();
+        let _ = quit_tx.send(());
     })
     .expect("Error setting Ctrl-C handler");
 
@@ -60,11 +81,14 @@ fn main() -> error::VividResult<()> {
 
     let mut watcher = foreground_watch::ForegroundWatcher::new();
     watcher.add_event_callback(foreground_callback);
-    watcher.register().unwrap();
+    watcher.register()?;
     log::trace!("is watcher registered? -> {}", watcher.is_registered());
 
     let mut msg = winapi::um::winuser::MSG::default();
     log::trace!("w32 waitloop started");
+
+    // TODO: https://docs.microsoft.com/en-us/windows/win32/winmsg/using-messages-and-message-queues#creating-a-message-loop
+    // Get this right with the accelerators and stuff
     loop {
         #[cfg(feature = "shell")]
         if let Ok(_) = quit_rx.recv_timeout(std::time::Duration::from_secs(1)) {
@@ -83,7 +107,6 @@ fn main() -> error::VividResult<()> {
                 break;
             }
 
-            // FIXME: This crashes from time to time?
             #[cfg(not(feature = "shell"))]
             if winapi::um::winuser::GetMessageA(
                 &mut msg,
@@ -97,7 +120,6 @@ fn main() -> error::VividResult<()> {
 
             winapi::um::winuser::TranslateMessage(&msg);
             winapi::um::winuser::DispatchMessageW(&msg);
-            log::trace!("message: {} = {}/{}", msg.message, msg.wParam, msg.lParam);
         }
     }
 

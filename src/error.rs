@@ -1,15 +1,17 @@
 #[derive(Debug, thiserror::Error)]
 pub enum WindowsHookError {
     #[error("Failed to hook w32 event [SetWinEventHook]")]
-    SetWinEventHook,
+    SetWinEventHook(std::io::Error),
     #[error("Failed to unhook w32 event [UnhookWinEvent]")]
-    UnhookWinEvent,
+    UnhookWinEvent(std::io::Error),
     #[error("There's no hook to unhook! You should call register() first.")]
-    NoHookToUnRegister,
+    NoHookToUnRegister(std::io::Error),
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum VividError {
+    #[error(transparent)]
+    SelfError(#[from] &'static Self),
     #[error(transparent)]
     IoError(#[from] std::io::Error),
     #[error(transparent)]
@@ -21,8 +23,6 @@ pub enum VividError {
     #[error(r#"Vivid detected both AMD and Nvidia drivers on your system.
 Please launch the app with the appropriate flag to choose which driver you use to display."#r)]
     DualDriversDetected,
-    #[error("Vivid couldn't load the driver API: {0}")]
-    DriverNotAvailable(std::io::Error),
     #[error("Vivid couldn't detect any GPU on your system. Is your computer okay?")]
     NoGpuDetected,
     #[error("Vivid couldn't detect any Displays on your system. How are you seeing this?")]

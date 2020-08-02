@@ -4,13 +4,17 @@ use winapi::{
     shared::{minwindef::DWORD, ntdef::NULL, windef},
     um::{winnt::LONG, winuser},
 };
-use sysinfo::SystemExt as _;
 
 lazy_static::lazy_static! {
-    static ref CALLBACKS: std::sync::RwLock<Vec<fn(&ForegroundWatcherEvent)>> = std::sync::RwLock::new(vec![]);
-    static ref SYSTEM: std::sync::RwLock<sysinfo::System> = std::sync::RwLock::new(
-        sysinfo::System::new_with_specifics(sysinfo::RefreshKind::default().with_processes())
-    );
+    static ref CALLBACKS: parking_lot::RwLock<Vec<fn(&ForegroundWatcherEvent) -> VividResult<()>>> = parking_lot::RwLock::new(vec![]);
+    pub(crate) static ref SYSTEM: parking_lot::RwLock<sysinfo::System> = {
+        use sysinfo::SystemExt as _;
+        parking_lot::RwLock::new(
+            sysinfo::System::new_with_specifics(
+                sysinfo::RefreshKind::default().with_processes()
+            )
+        )
+    };
 }
 
 #[derive(Debug)]
@@ -33,10 +37,8 @@ impl ForegroundWatcher {
         Self::default()
     }
 
-    pub fn add_event_callback(&mut self, cb: fn(&ForegroundWatcherEvent)) {
-        if let Ok(mut cb_vec) = CALLBACKS.write() {
-            cb_vec.push(cb);
-        }
+    pub fn add_event_callback(&mut self, cb: fn(&ForegroundWatcherEvent) -> VividResult<()>) {
+        CALLBACKS.write().push(cb);
     }
 
     pub fn is_registered(&self) -> bool {
@@ -53,7 +55,7 @@ impl ForegroundWatcher {
                 self.proc,
                 0,
                 0,
-                winuser::WINEVENT_OUTOFCONTEXT,
+                winuser::WINEVENT_OUTOFCONTEXT | winuser::WINEVENT_SKIPOWNPROCESS,
             )
         };
 
@@ -64,7 +66,7 @@ impl ForegroundWatcher {
         } else {
             self.proc = None;
             log::error!("ForegroundWatcher::register() -> failed");
-            return Err(WindowsHookError::SetWinEventHook.into());
+            return Err(WindowsHookError::SetWinEventHook(std::io::Error::last_os_error()).into());
         }
 
         Ok(())
@@ -81,11 +83,11 @@ impl ForegroundWatcher {
                 log::error!("ForegroundWatcher::unregister() -> failed");
                 self.proc = None;
                 self.registered = false;
-                return Err(WindowsHookError::UnhookWinEvent.into());
+                return Err(WindowsHookError::UnhookWinEvent(std::io::Error::last_os_error()).into());
             }
         }
 
-        Err(WindowsHookError::NoHookToUnRegister.into())
+        Err(WindowsHookError::NoHookToUnRegister(std::io::Error::last_os_error()).into())
     }
 
     unsafe extern "system" fn event_proc(
@@ -97,7 +99,7 @@ impl ForegroundWatcher {
         id_event_thread: DWORD,
         dwms_event_time: DWORD,
     ) {
-        use sysinfo::{ProcessExt as _};
+        use sysinfo::{ProcessExt as _, SystemExt as _};
         log::trace!(
             "ForegroundWatcher::event_proc({:?}, {}, {:?}, {}, {}, {}, {})",
             event_hook,
@@ -113,31 +115,33 @@ impl ForegroundWatcher {
         let process_id = process_id as usize;
         log::trace!("Found process id #{} from hwnd", process_id);
 
-        let inspection_result = (*SYSTEM)
-            .write()
-            .and_then(|mut system| {
-                let _ = system.refresh_process(process_id);
-                Ok(system.get_process(process_id).map(move |process| {
-                    log::trace!(
-                        "Found process {} [{}]",
-                        process.name(),
-                        process.exe().display()
-                    );
-                    ForegroundWatcherEvent {
-                        hwnd,
-                        process_id,
-                        process_exe: process.name().into(),
-                        process_path: process.exe().into(),
-                    }
-                }))
+        let _ = (*SYSTEM).write().refresh_process(process_id);
+
+        let mut inspection_result: Option<ForegroundWatcherEvent> = (*SYSTEM)
+            .read()
+            .get_process(process_id)
+            .map(move |process| {
+                log::trace!(
+                    "Found process {} [{}]",
+                    process.name(),
+                    process.exe().display()
+                );
+                ForegroundWatcherEvent {
+                    hwnd,
+                    process_id,
+                    process_exe: process.name().into(),
+                    process_path: process.exe().into(),
+                }
             });
 
-        match inspection_result {
-            Ok(Some(event)) => if let Ok(callbacks) = CALLBACKS.read() {
-                callbacks.iter().for_each(|f| f(&event));
-            },
-            Ok(None) => log::error!("{}", VividError::ProcessNotAvailable(process_id)),
-            _ => {}
+        if let Some(event) = inspection_result.take() {
+            CALLBACKS.read().iter().for_each(|f| {
+                if let Err(e) = f(&event) {
+                    log::error!("ForegroundWatcher::event_proc: Error in callback: {}", e);
+                }
+            })
+        } else {
+            log::error!("{}", VividError::ProcessNotAvailable(process_id));
         }
     }
 }
@@ -148,8 +152,6 @@ impl Drop for ForegroundWatcher {
             let _ = self.unregister();
         }
 
-        if let Ok(mut callbacks) = CALLBACKS.write() {
-            callbacks.clear();
-        }
+        CALLBACKS.write().clear();
     }
 }

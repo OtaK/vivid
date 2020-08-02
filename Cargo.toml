@@ -21,7 +21,8 @@ winapi = { version = "0.3", features = ["winuser", "shlobj", "impl-debug", "impl
 sysinfo = "0.15"
 lazy_static = "1.4"
 ctrlc = { version = "3.1", optional = true }
+parking_lot = "0.11"
 
 [profile.release]
-lto = "fat"
+lto = true
 codegen-units = 1
