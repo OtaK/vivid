@@ -31,7 +31,7 @@ Please launch the app with the appropriate flag to choose which driver you use t
     NoGpuDetected,
     #[error("Vivid couldn't detect any Displays on your system. How are you seeing this?")]
     NoDisplayDetected,
-    #[error("Vivid couldn't inspect process #{0}. Probably because it's system owned.")]
+    #[error("Vivid couldn't inspect the process with PID #{0}. Probably because it's system owned.")]
     ProcessNotAvailable(usize),
     #[error(transparent)]
     NvAPIError(#[from] nvapi_hi::sys::Status),

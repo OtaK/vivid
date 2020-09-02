@@ -1,9 +1,16 @@
 [package]
 name = "vivid"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Mathieu Amiot <m.amiot@otak-arts.com>"]
 edition = "2018"
 description = "Smol utility to change digital vibrance / saturation when a program within a list starts"
+
+[package.metadata.winres]
+OriginalFileName = "Vivid.exe"
+LegalCopyright = "Copyright © Mathieu Amiot 2020"
+FileDescription = "Smol utility to change digital vibrance / saturation when a program within a list starts"
+ProductName = "Vivid"
+ProductVersion = "0.2.0"
 
 [dependencies]
 nvapi-hi = { git = "https://github.com/OtaK/nvapi-rs", branch="feature/dvc", default-features = false }
@@ -17,7 +24,6 @@ winapi = { version = "0.3", features = ["winuser", "tlhelp32"] }
 sysinfo = "0.15"
 lazy_static = "1.4"
 parking_lot = "0.11"
-ntapi = { version = "0.3.4", features = ["impl-default"] }
 structopt = { version = "0.3", features = ["paw"], default-features = false }
 paw = "1.0"
 
@@ -25,3 +31,6 @@ paw = "1.0"
 lto = true
 codegen-units = 1
 debug-assertions = false
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1.11"

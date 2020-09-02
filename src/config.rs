@@ -7,14 +7,19 @@ pub const DEFAULT_CONFIG_FILENAME: &str = "vivid.toml";
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Program {
+    /// Name of the program to react on
     pub exe_name: String,
+    /// Vibrance value in percentage to apply when this program comes to foreground.
     pub vibrance: u8,
+    /// Only apply settings when the program comes to foreground in FullScreen mode
     pub fullscreen_only: Option<bool>
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Config {
+    /// Vibrance to restore when any non-selected program comes to foreground, included explorer.exe
     desktop_vibrance: u8,
+    /// Program-specific settings
     program_settings: Vec<Program>,
 }
 
@@ -29,7 +34,7 @@ impl Default for Config {
 
 impl Config {
     fn sample() -> crate::VividResult<Self> {
-        let vibrance = (*crate::GPU).as_ref()?.read().get_vibrance()?;
+        let vibrance = unsafe { crate::GPU.as_ref()?.read().get_vibrance()? };
         let mut default = Self::default();
         default.desktop_vibrance = vibrance;
         default.program_settings.push(Program {
@@ -70,7 +75,7 @@ impl Config {
         }
     }
 
-    #[allow(dead_code)]
+    /// Loads the configuration file at the standard location (alongside the .exe)
     pub fn load() -> crate::VividResult<Self> {
         use std::io::Read as _;
         let mut file = Self::load_file()?;
@@ -79,6 +84,7 @@ impl Config {
         toml::from_slice(&file_contents).map_err(Into::into)
     }
 
+    /// Launches windows standard editor for this file.
     pub fn edit() -> crate::VividResult<()> {
         let _ = Self::load_file()?;
         let hwnd = unsafe { ShellExecuteA(

@@ -2,7 +2,7 @@ use crate::error::VividResult;
 
 #[no_mangle]
 pub fn handler(args: &crate::foreground_watch::ForegroundWatcherEvent) -> VividResult<()> {
-    let gpu = (*crate::GPU).as_ref()?;
+    let gpu = unsafe {crate::GPU.as_ref()? };
     let previous_vibrance = gpu.read().get_vibrance()?;
     log::trace!("callback args: {:#?}", args);
     let (vibrance, fullscreen_only) = if let Some(program) = (*crate::CONFIG)
