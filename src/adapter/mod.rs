@@ -79,6 +79,18 @@ impl Gpu {
 
         log::trace!("Adapter: {:#?}", adapter);
 
+        Self::new_with_adapter(adapter)
+    }
+
+    pub(crate) fn new_nvidia() -> VividResult<Self> {
+        Self::new_with_adapter(Box::new(nvidia::Nvidia::new()?))
+    }
+
+    pub(crate) fn new_amd() -> VividResult<Self> {
+        Self::new_with_adapter(Box::new(amd::Amd::new()?))
+    }
+
+    fn new_with_adapter(adapter: Box<dyn VibranceAdapter + Send + Sync>) -> VividResult<Self> {
         Ok(Self {
             sku: adapter.get_sku()?,
             vendor: adapter.get_vendor()?,
