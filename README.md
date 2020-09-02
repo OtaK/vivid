@@ -49,14 +49,14 @@ The file format used is [TOML](https://toml.io/en/).
 Sample structure:
 
 ```toml
-// Vibrance to restore when any non-selected program comes to foreground, included explorer.exe
+# Vibrance to restore when any non-selected program comes to foreground, included explorer.exe
 desktop_vibrance = 50
 
-// Program-specific settings
+# Program-specific settings
 [[program_settings]]
-exe_name = "r5apex.exe" // Name of the program to react on
-vibrance = 72 // Vibrance value in percentage to apply when this program comes to foreground.
-fullscreen_only = false // Whether or not we only apply settings when the program comes to foreground in FullScreen mode
+exe_name = "r5apex.exe" # Name of the program to react on
+vibrance = 72 # Vibrance value in percentage to apply when this program comes to foreground.
+fullscreen_only = false # Whether or not we only apply settings when the program comes to foreground in FullScreen mode
 
 [[program_settings]]
 exe_name = "your_favorite_program.exe"
