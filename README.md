@@ -64,6 +64,13 @@ vibrance = 100
 fullscreen_only = true
 ```
 
+## Roadmap
+
+* [x] Docs improvements
+* [ ] Shell Icon (notification area) support
+* [ ] NSIS installer
+* [ ] Resolution / Display mode change support
+
 ## Credits
 
 * Mathieu Amiot / OtaK_ - Author of this program

@@ -1,12 +1,16 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 // TODO: Support AMD GPUs
+// TODO: Create NotificationArea Icon with `Shell_NotifyIconA`
+// TODO: Tweak release process to build a NSIS-powered installer
+// TODO: Support changing desktop resolution on application start
 
 mod adapter;
 mod config;
 mod foreground_watch;
 mod foreground_callback;
 mod w32_msgloop;
+// mod w32_notifyicon;
 #[cfg(debug_assertions)]
 mod w32_ctrlc;
 
@@ -70,6 +74,8 @@ fn main(opts: Opts) -> error::VividResult<()> {
     watcher.add_event_callback(foreground_callback::handler);
     watcher.register()?;
     log::trace!("is watcher registered? -> {}", watcher.is_registered());
+
+    // w32_notifyicon::register()?;
 
     let mut msg = unsafe { std::mem::zeroed() };
     #[cfg(debug_assertions)]

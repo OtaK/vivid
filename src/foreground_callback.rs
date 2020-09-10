@@ -5,15 +5,9 @@ pub fn handler(args: &crate::foreground_watch::ForegroundWatcherEvent) -> VividR
     let gpu = unsafe {crate::GPU.as_ref()? };
     let previous_vibrance = gpu.read().get_vibrance()?;
     log::trace!("callback args: {:#?}", args);
-    let (vibrance, fullscreen_only) = if let Some(program) = (*crate::CONFIG)
-        .programs()
-        .iter()
-        .find(|&program| program.exe_name == args.process_exe)
-    {
-        (program.vibrance, program.fullscreen_only.unwrap_or_default())
-    } else {
-        ((*crate::CONFIG).default_vibrance(), false)
-    };
+    let (vibrance, fullscreen_only) = (*crate::CONFIG)
+        .vibrance_for_program(&args.process_exe)
+        .unwrap_or_else(|| ((*crate::CONFIG).default_vibrance(), false));
 
     let apply = if fullscreen_only {
         log::trace!("{} requires fullscreen, detecting...", args.process_exe);
