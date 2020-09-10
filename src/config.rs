@@ -103,8 +103,11 @@ impl Config {
         }
     }
 
-    pub fn programs(&self) -> &Vec<Program> {
-        &self.program_settings
+    pub fn vibrance_for_program(&self, program_exe: &str) -> Option<(u8, bool)> {
+        self.program_settings
+            .iter()
+            .find(|&program| program.exe_name == program_exe)
+            .map(|program| (program.vibrance, program.fullscreen_only.unwrap_or_default()))
     }
 
     pub fn default_vibrance(&self) -> u8 {
