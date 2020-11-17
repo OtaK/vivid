@@ -19,7 +19,7 @@ pub fn read_message(msg: &mut winapi::um::winuser::MSG) -> VividResult<()> {
     Ok(())
 }
 
-/// Processes win32 messages. Will return a boolean telling whether we should exist the message loop or not
+/// Processes win32 messages. Will return a boolean telling whether we should exit the message loop or not
 #[inline(always)]
 pub fn process_message(msg: &winapi::um::winuser::MSG) -> bool {
     if msg.message == winapi::um::winuser::WM_QUIT {
