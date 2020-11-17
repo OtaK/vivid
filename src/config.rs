@@ -1,9 +1,23 @@
-use winapi::um::winuser::SW_SHOWNORMAL;
-use winapi::shared::ntdef::NULL;
-use winapi::um::shellapi::ShellExecuteA;
+use winapi::{
+    shared::ntdef::NULL,
+    um::{
+        winuser::SW_SHOWNORMAL,
+        shellapi::ShellExecuteA,
+    }
+};
 use crate::error::VividError;
 
 pub const DEFAULT_CONFIG_FILENAME: &str = "vivid.toml";
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct VideoMode {
+    /// Screen pixel width
+    pub width: u32,
+    /// Screen pixel height
+    pub height: u32,
+    /// Refresh rate
+    pub freq: u32,
+}
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Program {
@@ -12,13 +26,17 @@ pub struct Program {
     /// Vibrance value in percentage to apply when this program comes to foreground.
     pub vibrance: u8,
     /// Only apply settings when the program comes to foreground in FullScreen mode
-    pub fullscreen_only: Option<bool>
+    pub fullscreen_only: Option<bool>,
+    /// Only apply this video mode when this program starts
+    pub resolution: Option<VideoMode>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     /// Vibrance to restore when any non-selected program comes to foreground, included explorer.exe
     desktop_vibrance: u8,
+    /// Default desktop resolution
+    resolution: Option<VideoMode>,
     /// Program-specific settings
     program_settings: Vec<Program>,
 }
@@ -28,6 +46,7 @@ impl Default for Config {
         Self {
             desktop_vibrance: 50,
             program_settings: vec![],
+            resolution: None,
         }
     }
 }
@@ -41,6 +60,7 @@ impl Config {
             exe_name: "sample_program.exe".into(),
             vibrance,
             fullscreen_only: Some(false),
+            resolution: None,
         });
 
         Ok(default)

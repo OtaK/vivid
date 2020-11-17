@@ -20,7 +20,7 @@ toml = "0.5"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 anyhow = "1.0"
-winapi = { version = "0.3", features = ["winuser", "tlhelp32", "impl-default"] }
+winapi = { version = "0.3", features = ["winuser", "ntdef", "tlhelp32", "impl-default"] }
 sysinfo = "0.15"
 lazy_static = "1.4"
 parking_lot = "0.11"
