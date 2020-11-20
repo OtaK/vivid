@@ -8,7 +8,7 @@ description = "Smol utility to change digital vibrance / saturation when a progr
 [package.metadata.winres]
 OriginalFileName = "Vivid.exe"
 LegalCopyright = "Copyright © Mathieu Amiot 2020"
-FileDescription = "Smol utility to change digital vibrance / saturation when a program within a list starts"
+FileDescription = "Vivid - Digital Vibrance Automation"
 ProductName = "Vivid"
 ProductVersion = "0.2.0"
 
@@ -20,8 +20,8 @@ toml = "0.5"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 anyhow = "1.0"
-winapi = { version = "0.3", features = ["winuser", "ntdef", "tlhelp32", "impl-default"] }
-sysinfo = "0.15"
+winapi = { version = "0.3", features = ["winuser", "ntdef", "tlhelp32", "impl-default", "commctrl"] }
+sysinfo = "0.16"
 lazy_static = "1.4"
 parking_lot = "0.11"
 structopt = { version = "0.3", features = ["paw"], default-features = false }

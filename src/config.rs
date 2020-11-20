@@ -1,11 +1,8 @@
+use crate::error::VividError;
 use winapi::{
     shared::ntdef::NULL,
-    um::{
-        winuser::SW_SHOWNORMAL,
-        shellapi::ShellExecuteA,
-    }
+    um::{shellapi::ShellExecuteA, winuser::SW_SHOWNORMAL},
 };
-use crate::error::VividError;
 
 pub const DEFAULT_CONFIG_FILENAME: &str = "vivid.toml";
 
@@ -35,6 +32,8 @@ pub struct Program {
 pub struct Config {
     /// Vibrance to restore when any non-selected program comes to foreground, included explorer.exe
     desktop_vibrance: u8,
+    /// ID of the target display
+    target_display: Option<u8>,
     /// Default desktop resolution
     resolution: Option<VideoMode>,
     /// Program-specific settings
@@ -45,6 +44,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             desktop_vibrance: 50,
+            target_display: None,
             program_settings: vec![],
             resolution: None,
         }
@@ -72,9 +72,9 @@ impl Config {
         Ok(path)
     }
 
-    fn load_file() -> crate::VividResult<std::fs::File> {
+    fn load_file(maybe_path: Option<String>) -> crate::VividResult<std::fs::File> {
         use std::io::Write as _;
-        let path = Self::config_path()?;
+        let path = maybe_path.map_or_else(|| Self::config_path(), |path| Ok(path.into()))?;
         let res = std::fs::OpenOptions::new()
             .write(true)
             .read(true)
@@ -96,9 +96,9 @@ impl Config {
     }
 
     /// Loads the configuration file at the standard location (alongside the .exe)
-    pub fn load() -> crate::VividResult<Self> {
+    pub fn load(maybe_path: Option<String>) -> crate::VividResult<Self> {
         use std::io::Read as _;
-        let mut file = Self::load_file()?;
+        let mut file = Self::load_file(maybe_path)?;
         let mut file_contents = vec![];
         file.read_to_end(&mut file_contents)?;
         toml::from_slice(&file_contents).map_err(Into::into)
@@ -106,15 +106,19 @@ impl Config {
 
     /// Launches windows standard editor for this file.
     pub fn edit() -> crate::VividResult<()> {
-        let _ = Self::load_file()?;
-        let hwnd = unsafe { ShellExecuteA(
-            NULL as _,
-            NULL as _,
-            std::ffi::CString::new(Self::config_path()?.to_str().unwrap().as_bytes()).unwrap().as_ptr(),
-            NULL as _,
-            NULL as _,
-            SW_SHOWNORMAL
-        )};
+        let _ = Self::load_file(None)?;
+        let file_path =
+            std::ffi::CString::new(Self::config_path()?.to_str().unwrap().as_bytes()).unwrap();
+        let hwnd = unsafe {
+            ShellExecuteA(
+                NULL as _,
+                NULL as _,
+                file_path.as_ptr(),
+                NULL as _,
+                NULL as _,
+                SW_SHOWNORMAL,
+            )
+        };
 
         if hwnd as u32 > 32 {
             Ok(())
@@ -127,10 +131,19 @@ impl Config {
         self.program_settings
             .iter()
             .find(|&program| program.exe_name == program_exe)
-            .map(|program| (program.vibrance, program.fullscreen_only.unwrap_or_default()))
+            .map(|program| {
+                (
+                    program.vibrance,
+                    program.fullscreen_only.unwrap_or_default(),
+                )
+            })
     }
 
     pub fn default_vibrance(&self) -> u8 {
         self.desktop_vibrance
+    }
+
+    pub fn target_monitor(&self) -> u8 {
+        self.target_display.unwrap_or_else(|| 1)
     }
 }

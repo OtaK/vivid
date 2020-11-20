@@ -7,8 +7,8 @@
 
 mod adapter;
 mod config;
-mod foreground_watch;
 mod foreground_callback;
+mod foreground_watch;
 mod w32_msgloop;
 // mod w32_notifyicon;
 #[cfg(debug_assertions)]
@@ -18,7 +18,9 @@ mod error;
 use self::error::*;
 
 pub(crate) type ArcMutex<T> = std::sync::Arc<parking_lot::Mutex<T>>;
-pub(crate) fn arcmutex<T: Into<parking_lot::Mutex<T>>>(x: T) -> ArcMutex<T> { std::sync::Arc::new(x.into()) }
+pub(crate) fn arcmutex<T: Into<parking_lot::Mutex<T>>>(x: T) -> ArcMutex<T> {
+    std::sync::Arc::new(x.into())
+}
 
 #[derive(Debug, structopt::StructOpt)]
 #[structopt(
@@ -30,6 +32,9 @@ struct Opts {
     /// Launch an editor to edit the config file
     #[structopt(short, long)]
     edit: bool,
+    /// Pass a custom configuration file path
+    #[structopt(short = "c", long = "config")]
+    config_file: Option<String>,
     /// Bypasses GPU detection and forces to load the NVidia-specific code.
     /// It can provoke errors if you don't own an NVidia GPU or if drivers cannot be found on your system.
     #[structopt(long)]
@@ -42,10 +47,11 @@ struct Opts {
 }
 
 pub static mut GPU: VividResult<parking_lot::RwLock<adapter::Gpu>> = Err(VividError::NoGpuDetected);
+pub static mut CONFIG: VividResult<config::Config> = Err(VividError::NoConfigurationLoaded);
 
-lazy_static::lazy_static! {
-    pub static ref CONFIG: config::Config = config::Config::load().unwrap_or_default();
-}
+// lazy_static::lazy_static! {
+//     pub static ref CONFIG: config::Config = config::Config::load().unwrap_or_default();
+// }
 
 #[paw::main]
 fn main(opts: Opts) -> error::VividResult<()> {
@@ -56,6 +62,10 @@ fn main(opts: Opts) -> error::VividResult<()> {
         return Ok(());
     }
 
+    unsafe {
+        CONFIG = config::Config::load(opts.config_file);
+    }
+
     let adapter = if opts.nvidia {
         adapter::Gpu::new_nvidia()?
     } else if opts.amd {
@@ -64,22 +74,28 @@ fn main(opts: Opts) -> error::VividResult<()> {
         adapter::Gpu::detect_gpu()?
     };
 
-    unsafe { GPU = Ok(parking_lot::RwLock::new(adapter)); }
+    unsafe {
+        GPU = Ok(parking_lot::RwLock::new(adapter));
+    }
 
     // Touch config and GPU to avoid way too lazy loading
-    log::info!("current vibrance is: {}", unsafe { GPU.as_ref()?.read().get_vibrance()? });
-    log::info!("config loaded: {:#?}", *CONFIG);
+    log::info!("current vibrance is: {}", unsafe {
+        GPU.as_ref()?.read().get_vibrance()?
+    });
+    log::info!("config loaded: {:#?}", unsafe { CONFIG.as_ref()? });
 
     let mut watcher = foreground_watch::ForegroundWatcher::new();
     watcher.add_event_callback(foreground_callback::handler);
     watcher.register()?;
     log::trace!("is watcher registered? -> {}", watcher.is_registered());
 
-    // w32_notifyicon::register()?;
+    //w32_notifyicon::register()?;
 
     let mut msg = unsafe { std::mem::zeroed() };
     #[cfg(debug_assertions)]
-    unsafe { w32_ctrlc::init_ctrlc()?; }
+    unsafe {
+        w32_ctrlc::init_ctrlc()?;
+    }
 
     log::trace!("w32 waitloop started");
     loop {

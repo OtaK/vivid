@@ -1,4 +1,4 @@
-use crate::error::{VividResult, WindowsHookError, VividError};
+use crate::error::{VividError, VividResult, WindowsHookError};
 use winapi::shared::windef::HWND;
 use winapi::{
     shared::{minwindef::DWORD, ntdef::NULL, windef},
@@ -83,7 +83,9 @@ impl ForegroundWatcher {
                 log::error!("ForegroundWatcher::unregister() -> failed");
                 self.proc = None;
                 self.registered = false;
-                return Err(WindowsHookError::UnhookWinEvent(std::io::Error::last_os_error()).into());
+                return Err(
+                    WindowsHookError::UnhookWinEvent(std::io::Error::last_os_error()).into(),
+                );
             }
         }
 
@@ -129,7 +131,9 @@ impl ForegroundWatcher {
                 let process_path: std::path::PathBuf = process.exe().into();
                 let mut process_exe: String = process.name().into();
                 if process_exe.len() == 0 {
-                    if let Some(exe_name) = process_path.file_name().and_then(std::ffi::OsStr::to_str) {
+                    if let Some(exe_name) =
+                        process_path.file_name().and_then(std::ffi::OsStr::to_str)
+                    {
                         process_exe.push_str(exe_name);
                     }
                 }
