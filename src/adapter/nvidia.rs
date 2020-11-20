@@ -1,5 +1,9 @@
 use crate::arcmutex;
-use crate::{ArcMutex, error::{VividError, VividResult}};
+use crate::CONFIG;
+use crate::{
+    error::{VividError, VividResult},
+    ArcMutex,
+};
 use nvapi_hi::{Display, Gpu};
 
 #[cfg(all(windows, target_pointer_width = "32"))]
@@ -10,6 +14,7 @@ pub const LIBRARY_NAME: &[u8; 12] = b"nvapi64.dll\0";
 pub struct Nvidia {
     gpu: ArcMutex<Gpu>,
     displays: Vec<Display>,
+    target_display: usize,
 }
 
 unsafe impl Send for Nvidia {}
@@ -28,31 +33,38 @@ impl Nvidia {
     pub fn new() -> VividResult<Self> {
         for gpu in Gpu::enumerate()? {
             let displays = gpu.connected_displays()?;
+            let target_display = unsafe { CONFIG.as_ref()? }.target_monitor() as usize;
             return Ok(Self {
                 gpu: arcmutex(gpu),
                 displays,
+                target_display,
             });
         }
 
         Err(VividError::NoGpuDetected)
     }
 
-    fn get_first_display(&self) -> VividResult<&Display> {
+    fn get_target_display(&self) -> VividResult<&Display> {
         self.displays
-            .first()
+            .iter()
+            .find(|display| {
+                display.display_name == format!("\\\\.\\DISPLAY{}", self.target_display)
+            })
             .ok_or_else(|| VividError::NoDisplayDetected)
     }
 }
 
 impl super::VibranceAdapter for Nvidia {
     fn set_vibrance(&self, vibrance: u8) -> VividResult<u8> {
-        self.get_first_display()?
+        self.get_target_display()?
             .set_vibrance(vibrance)
             .map_err(Into::into)
     }
 
     fn get_vibrance(&self) -> VividResult<u8> {
-        self.get_first_display()?.get_vibrance().map_err(From::from)
+        self.get_target_display()?
+            .get_vibrance()
+            .map_err(From::from)
     }
 
     fn get_sku(&self) -> VividResult<String> {

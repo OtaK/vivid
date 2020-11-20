@@ -1,9 +1,7 @@
 #[cfg(windows)]
 fn main() {
     let mut res = winres::WindowsResource::new();
-    res
-        .set_language(0x0000)
-        .set_icon("assets/vivid.ico");
+    res.set_language(0x0000).set_icon("assets/vivid.ico");
 
     res.compile().unwrap();
 }

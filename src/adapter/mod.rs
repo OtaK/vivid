@@ -5,11 +5,14 @@ mod nvidia;
 
 #[inline(always)]
 fn dll_exists(path: *const winapi::ctypes::c_char) -> bool {
-    let hwnd = unsafe { winapi::um::libloaderapi::LoadLibraryExA(
-        path,
-        winapi::shared::ntdef::NULL,
-        winapi::um::libloaderapi::LOAD_LIBRARY_AS_DATAFILE | winapi::um::libloaderapi::LOAD_LIBRARY_AS_IMAGE_RESOURCE
-    )};
+    let hwnd = unsafe {
+        winapi::um::libloaderapi::LoadLibraryExA(
+            path,
+            winapi::shared::ntdef::NULL,
+            winapi::um::libloaderapi::LOAD_LIBRARY_AS_DATAFILE
+                | winapi::um::libloaderapi::LOAD_LIBRARY_AS_IMAGE_RESOURCE,
+        )
+    };
     if hwnd.is_null() {
         false
     } else {
@@ -54,10 +57,16 @@ pub struct Gpu {
 
 impl Gpu {
     pub fn detect_gpu() -> VividResult<Self> {
-        let nvidia_exists = dll_exists(nvidia::LIBRARY_NAME.as_ptr() as *const winapi::ctypes::c_char);
-        let amd_adl_exists = dll_exists(amd::LIBRARY_NAME.as_ptr() as *const winapi::ctypes::c_char);
+        let nvidia_exists =
+            dll_exists(nvidia::LIBRARY_NAME.as_ptr() as *const winapi::ctypes::c_char);
+        let amd_adl_exists =
+            dll_exists(amd::LIBRARY_NAME.as_ptr() as *const winapi::ctypes::c_char);
 
-        log::trace!("Detecting driver API DLLs: AMD = {} / Nvidia = {}", amd_adl_exists, nvidia_exists);
+        log::trace!(
+            "Detecting driver API DLLs: AMD = {} / Nvidia = {}",
+            amd_adl_exists,
+            nvidia_exists
+        );
 
         let vendor = if nvidia_exists && amd_adl_exists {
             GpuVendor::Ambiguous
