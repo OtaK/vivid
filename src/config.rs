@@ -32,8 +32,6 @@ pub struct Program {
 pub struct Config {
     /// Vibrance to restore when any non-selected program comes to foreground, included explorer.exe
     desktop_vibrance: u8,
-    /// ID of the target display
-    target_display: Option<u8>,
     /// Default desktop resolution
     resolution: Option<VideoMode>,
     /// Program-specific settings
@@ -44,7 +42,6 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             desktop_vibrance: 50,
-            target_display: None,
             program_settings: vec![],
             resolution: None,
         }
@@ -53,7 +50,7 @@ impl Default for Config {
 
 impl Config {
     fn sample() -> crate::VividResult<Self> {
-        let vibrance = unsafe { crate::GPU.as_ref()?.read().get_vibrance()? };
+        let vibrance = unsafe { crate::GPU.as_ref()?.write().get_vibrance()? };
         let mut default = Self::default();
         default.desktop_vibrance = vibrance;
         default.program_settings.push(Program {
@@ -141,9 +138,5 @@ impl Config {
 
     pub fn default_vibrance(&self) -> u8 {
         self.desktop_vibrance
-    }
-
-    pub fn target_monitor(&self) -> u8 {
-        self.target_display.unwrap_or_else(|| 1)
     }
 }

@@ -1,10 +1,10 @@
 use crate::arcmutex;
-use crate::CONFIG;
 use crate::{
     error::{VividError, VividResult},
     ArcMutex,
 };
 use nvapi_hi::{Display, Gpu};
+
 
 #[cfg(all(windows, target_pointer_width = "32"))]
 pub const LIBRARY_NAME: &[u8; 10] = b"nvapi.dll\0";
@@ -14,7 +14,6 @@ pub const LIBRARY_NAME: &[u8; 12] = b"nvapi64.dll\0";
 pub struct Nvidia {
     gpu: ArcMutex<Gpu>,
     displays: Vec<Display>,
-    target_display: usize,
 }
 
 unsafe impl Send for Nvidia {}
@@ -33,49 +32,47 @@ impl Nvidia {
     pub fn new() -> VividResult<Self> {
         for gpu in Gpu::enumerate()? {
             let displays = gpu.connected_displays()?;
-            let target_display = unsafe { CONFIG.as_ref()? }.target_monitor() as usize;
             return Ok(Self {
                 gpu: arcmutex(gpu),
                 displays,
-                target_display,
             });
         }
 
         Err(VividError::NoGpuDetected)
     }
 
-    fn get_target_display(&self) -> VividResult<&Display> {
+    fn get_target_display(&mut self) -> VividResult<&Display> {
+        self.displays = self.gpu.lock().connected_displays()?;
+        let target_display = super::Gpu::get_primary_monitor_name()?;
         self.displays
             .iter()
-            .find(|display| {
-                display.display_name == format!("\\\\.\\DISPLAY{}", self.target_display)
-            })
+            .find(|display| display.display_name == target_display)
             .ok_or_else(|| VividError::NoDisplayDetected)
     }
 }
 
 impl super::VibranceAdapter for Nvidia {
-    fn set_vibrance(&self, vibrance: u8) -> VividResult<u8> {
+    fn set_vibrance(&mut self, vibrance: u8) -> VividResult<u8> {
         self.get_target_display()?
             .set_vibrance(vibrance)
             .map_err(Into::into)
     }
 
-    fn get_vibrance(&self) -> VividResult<u8> {
+    fn get_vibrance(&mut self) -> VividResult<u8> {
         self.get_target_display()?
             .get_vibrance()
             .map_err(From::from)
     }
 
-    fn get_sku(&self) -> VividResult<String> {
+    fn get_sku(&mut self) -> VividResult<String> {
         Ok(self.gpu.lock().info()?.name)
     }
 
-    fn get_vendor(&self) -> VividResult<super::GpuVendor> {
+    fn get_vendor(&mut self) -> VividResult<super::GpuVendor> {
         Ok(super::GpuVendor::Nvidia)
     }
 
-    fn get_system_type(&self) -> VividResult<super::SystemType> {
+    fn get_system_type(&mut self) -> VividResult<super::SystemType> {
         Ok(match self.gpu.lock().info()?.system_type {
             nvapi_hi::SystemType::Desktop | nvapi_hi::SystemType::Unknown => {
                 super::SystemType::Desktop
