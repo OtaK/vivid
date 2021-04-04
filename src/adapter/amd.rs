@@ -14,23 +14,23 @@ impl Amd {
 }
 
 impl super::VibranceAdapter for Amd {
-    fn set_vibrance(&self, _vibrance: u8) -> VividResult<u8> {
+    fn set_vibrance(&mut self, _vibrance: u8) -> VividResult<u8> {
         todo!()
     }
 
-    fn get_vibrance(&self) -> VividResult<u8> {
+    fn get_vibrance(&mut self) -> VividResult<u8> {
         todo!()
     }
 
-    fn get_sku(&self) -> VividResult<String> {
+    fn get_sku(&mut self) -> VividResult<String> {
         todo!()
     }
 
-    fn get_vendor(&self) -> VividResult<super::GpuVendor> {
+    fn get_vendor(&mut self) -> VividResult<super::GpuVendor> {
         todo!()
     }
 
-    fn get_system_type(&self) -> VividResult<super::SystemType> {
+    fn get_system_type(&mut self) -> VividResult<super::SystemType> {
         todo!()
     }
 }

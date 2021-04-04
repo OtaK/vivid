@@ -25,11 +25,11 @@ fn dll_exists(path: *const winapi::ctypes::c_char) -> bool {
 }
 
 pub trait VibranceAdapter: std::fmt::Debug {
-    fn set_vibrance(&self, vibrance: u8) -> VividResult<u8>;
-    fn get_vibrance(&self) -> VividResult<u8>;
-    fn get_sku(&self) -> VividResult<String>;
-    fn get_vendor(&self) -> VividResult<GpuVendor>;
-    fn get_system_type(&self) -> VividResult<SystemType>;
+    fn set_vibrance(&mut self, vibrance: u8) -> VividResult<u8>;
+    fn get_vibrance(&mut self) -> VividResult<u8>;
+    fn get_sku(&mut self) -> VividResult<String>;
+    fn get_vendor(&mut self) -> VividResult<GpuVendor>;
+    fn get_system_type(&mut self) -> VividResult<SystemType>;
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -91,6 +91,20 @@ impl Gpu {
         Self::new_with_adapter(adapter)
     }
 
+    pub(crate) fn get_primary_monitor_name() -> VividResult<String> {
+        let primary_monitor_hwnd = unsafe { winapi::um::winuser::MonitorFromWindow(std::ptr::null_mut(), winapi::um::winuser::MONITOR_DEFAULTTOPRIMARY) };
+        let mut monitor_info = winapi::um::winuser::MONITORINFOEXW::default();
+        monitor_info.cbSize = std::mem::size_of::<winapi::um::winuser::MONITORINFOEXW>() as u32;
+        let res = unsafe { winapi::um::winuser::GetMonitorInfoW(primary_monitor_hwnd, &mut monitor_info as *mut _ as *mut _) };
+        if res != winapi::shared::minwindef::TRUE {
+            return Err(VividError::NoDisplayDetected);
+        }
+        let bytes: Vec<u16> = monitor_info.szDevice.iter().take_while(|b| **b != 0u16).map(|b| *b).collect();
+        let monitor_name: std::ffi::OsString = std::os::windows::ffi::OsStringExt::from_wide(&bytes);
+        let monitor_name = monitor_name.into_string().unwrap();
+        Ok(monitor_name)
+    }
+
     pub(crate) fn new_nvidia() -> VividResult<Self> {
         Self::new_with_adapter(Box::new(nvidia::Nvidia::new()?))
     }
@@ -99,7 +113,7 @@ impl Gpu {
         Self::new_with_adapter(Box::new(amd::Amd::new()?))
     }
 
-    fn new_with_adapter(adapter: Box<dyn VibranceAdapter + Send + Sync>) -> VividResult<Self> {
+    fn new_with_adapter(mut adapter: Box<dyn VibranceAdapter + Send + Sync>) -> VividResult<Self> {
         Ok(Self {
             sku: adapter.get_sku()?,
             vendor: adapter.get_vendor()?,
@@ -108,11 +122,11 @@ impl Gpu {
         })
     }
 
-    pub fn set_vibrance(&self, vibrance: u8) -> VividResult<u8> {
+    pub fn set_vibrance(&mut self, vibrance: u8) -> VividResult<u8> {
         self.adapter.set_vibrance(vibrance)
     }
 
-    pub fn get_vibrance(&self) -> VividResult<u8> {
+    pub fn get_vibrance(&mut self) -> VividResult<u8> {
         self.adapter.get_vibrance()
     }
 }

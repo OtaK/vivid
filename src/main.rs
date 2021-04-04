@@ -15,6 +15,7 @@ mod w32_msgloop;
 mod w32_ctrlc;
 
 mod error;
+
 use self::error::*;
 
 pub(crate) type ArcMutex<T> = std::sync::Arc<parking_lot::Mutex<T>>;
@@ -80,7 +81,7 @@ fn main(opts: Opts) -> error::VividResult<()> {
 
     // Touch config and GPU to avoid way too lazy loading
     log::info!("current vibrance is: {}", unsafe {
-        GPU.as_ref()?.read().get_vibrance()?
+        GPU.as_ref()?.write().get_vibrance()?
     });
     log::info!("config loaded: {:#?}", unsafe { CONFIG.as_ref()? });
 

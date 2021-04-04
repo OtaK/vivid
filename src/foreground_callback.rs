@@ -3,7 +3,7 @@ use crate::error::VividResult;
 #[no_mangle]
 pub fn handler(args: &crate::foreground_watch::ForegroundWatcherEvent) -> VividResult<()> {
     let gpu = unsafe { crate::GPU.as_ref()? };
-    let previous_vibrance = gpu.read().get_vibrance()?;
+    let previous_vibrance = gpu.write().get_vibrance()?;
     log::trace!("callback args: {:#?}", args);
     let (vibrance, fullscreen_only) = unsafe { crate::CONFIG.as_ref()? }
         .vibrance_for_program(&args.process_exe)
@@ -41,7 +41,7 @@ pub fn handler(args: &crate::foreground_watch::ForegroundWatcherEvent) -> VividR
     );
     if apply && vibrance != previous_vibrance {
         log::trace!("Applying new vibrance = {}", vibrance);
-        gpu.read().set_vibrance(vibrance)?;
+        gpu.write().set_vibrance(vibrance)?;
     }
 
     Ok(())
