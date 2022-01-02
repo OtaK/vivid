@@ -23,27 +23,27 @@ pub(crate) fn arcmutex<T: Into<parking_lot::Mutex<T>>>(x: T) -> ArcMutex<T> {
     std::sync::Arc::new(x.into())
 }
 
-#[derive(Debug, structopt::StructOpt)]
-#[structopt(
+#[derive(Debug, clap::Parser)]
+#[clap(
     name = "Vivid",
     about = "Smol utility to change digital vibrance / saturation when a program within a list starts",
     author = "by Mathieu Amiot / @OtaK_"
 )]
 struct Opts {
     /// Launch an editor to edit the config file
-    #[structopt(short, long)]
+    #[clap(short, long)]
     edit: bool,
     /// Pass a custom configuration file path
-    #[structopt(short = "c", long = "config")]
+    #[clap(short = 'c', long = "config")]
     config_file: Option<String>,
     /// Bypasses GPU detection and forces to load the NVidia-specific code.
     /// It can provoke errors if you don't own an NVidia GPU or if drivers cannot be found on your system.
-    #[structopt(long)]
+    #[clap(long)]
     nvidia: bool,
     /// Bypasses GPU detection and forces to load the AMD-specific code.
     /// It can provoke errors if you don't own an AMD GPU or if drivers cannot be found on your system.
     /// Warning: This is a placeholder flag and will not work, as AMD GPUs are not currently supported.
-    #[structopt(long)]
+    #[clap(long)]
     amd: bool,
 }
 
@@ -54,8 +54,9 @@ pub static mut CONFIG: VividResult<config::Config> = Err(VividError::NoConfigura
 //     pub static ref CONFIG: config::Config = config::Config::load().unwrap_or_default();
 // }
 
-#[paw::main]
-fn main(opts: Opts) -> error::VividResult<()> {
+fn main() -> error::VividResult<()> {
+    use clap::Parser as _;
+    let opts = Opts::parse();
     pretty_env_logger::init();
 
     if opts.edit {

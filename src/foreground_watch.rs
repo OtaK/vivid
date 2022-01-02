@@ -13,7 +13,7 @@ lazy_static::lazy_static! {
         use sysinfo::SystemExt as _;
         parking_lot::RwLock::new(
             sysinfo::System::new_with_specifics(
-                sysinfo::RefreshKind::default().with_processes()
+                sysinfo::RefreshKind::default().with_processes(sysinfo::ProcessRefreshKind::everything())
             )
         )
     };
@@ -123,7 +123,7 @@ impl ForegroundWatcher {
 
         let mut inspection_result: Option<ForegroundWatcherEvent> = (*SYSTEM)
             .read()
-            .get_process(process_id)
+            .process(process_id)
             .map(move |process| {
                 log::trace!(
                     "Found process {} [{}]",

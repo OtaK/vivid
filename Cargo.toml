@@ -21,9 +21,10 @@ serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 anyhow = "1.0"
 winapi = { version = "0.3", features = ["winuser", "ntdef", "tlhelp32", "impl-default", "commctrl"] }
-sysinfo = "0.18"
+sysinfo = "0.22"
 lazy_static = "1.4"
 parking_lot = "0.11"
+clap = { version = "3.0", features = ["derive"] }
 structopt = { version = "0.3", features = ["paw"], default-features = false }
 paw = "1.0"
 
@@ -33,4 +34,4 @@ codegen-units = 1
 debug-assertions = false
 
 [target.'cfg(windows)'.build-dependencies]
-winres = "0.1.11"
+winres = "0.1"
