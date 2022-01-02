@@ -9,7 +9,7 @@ pub fn handler(args: &crate::foreground_watch::ForegroundWatcherEvent) -> VividR
         .vibrance_for_program(&args.process_exe)
         .map_or_else(
             || VividResult::Ok((unsafe { crate::CONFIG.as_ref()? }.default_vibrance(), false)),
-            |values| Ok(values),
+            Ok,
         )?;
 
     let apply = if fullscreen_only {
@@ -20,12 +20,12 @@ pub fn handler(args: &crate::foreground_watch::ForegroundWatcherEvent) -> VividR
         let api_result = unsafe { shellapi::SHQueryUserNotificationState(&mut notification_state) };
         if api_result == winapi::shared::winerror::S_OK {
             log::trace!("Found notification state: {}", notification_state);
-            match notification_state {
+            matches!(
+                notification_state,
                 shellapi::QUNS_RUNNING_D3D_FULL_SCREEN
-                | shellapi::QUNS_PRESENTATION_MODE
-                | shellapi::QUNS_ACCEPTS_NOTIFICATIONS => true,
-                _ => false,
-            }
+                    | shellapi::QUNS_PRESENTATION_MODE
+                    | shellapi::QUNS_ACCEPTS_NOTIFICATIONS
+            )
         } else {
             false
         }

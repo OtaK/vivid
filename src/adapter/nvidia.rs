@@ -5,7 +5,6 @@ use crate::{
 };
 use nvapi_hi::{Display, Gpu};
 
-
 #[cfg(all(windows, target_pointer_width = "32"))]
 pub const LIBRARY_NAME: &[u8; 10] = b"nvapi.dll\0";
 #[cfg(all(windows, target_pointer_width = "64"))]
@@ -30,7 +29,7 @@ impl std::fmt::Debug for Nvidia {
 
 impl Nvidia {
     pub fn new() -> VividResult<Self> {
-        for gpu in Gpu::enumerate()? {
+        if let Some(gpu) = Gpu::enumerate()?.into_iter().next() {
             let displays = gpu.connected_displays()?;
             return Ok(Self {
                 gpu: arcmutex(gpu),
@@ -47,7 +46,7 @@ impl Nvidia {
         self.displays
             .iter()
             .find(|display| display.display_name == target_display)
-            .ok_or_else(|| VividError::NoDisplayDetected)
+            .ok_or(VividError::NoDisplayDetected)
     }
 }
 

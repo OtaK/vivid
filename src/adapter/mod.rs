@@ -92,15 +92,33 @@ impl Gpu {
     }
 
     pub(crate) fn get_primary_monitor_name() -> VividResult<String> {
-        let primary_monitor_hwnd = unsafe { winapi::um::winuser::MonitorFromWindow(std::ptr::null_mut(), winapi::um::winuser::MONITOR_DEFAULTTOPRIMARY) };
-        let mut monitor_info = winapi::um::winuser::MONITORINFOEXW::default();
-        monitor_info.cbSize = std::mem::size_of::<winapi::um::winuser::MONITORINFOEXW>() as u32;
-        let res = unsafe { winapi::um::winuser::GetMonitorInfoW(primary_monitor_hwnd, &mut monitor_info as *mut _ as *mut _) };
+        let primary_monitor_hwnd = unsafe {
+            winapi::um::winuser::MonitorFromWindow(
+                std::ptr::null_mut(),
+                winapi::um::winuser::MONITOR_DEFAULTTOPRIMARY,
+            )
+        };
+        let mut monitor_info = winapi::um::winuser::MONITORINFOEXW {
+            cbSize: std::mem::size_of::<winapi::um::winuser::MONITORINFOEXW>() as u32,
+            ..Default::default()
+        };
+        let res = unsafe {
+            winapi::um::winuser::GetMonitorInfoW(
+                primary_monitor_hwnd,
+                &mut monitor_info as *mut _ as *mut _,
+            )
+        };
         if res != winapi::shared::minwindef::TRUE {
             return Err(VividError::NoDisplayDetected);
         }
-        let bytes: Vec<u16> = monitor_info.szDevice.iter().take_while(|b| **b != 0u16).map(|b| *b).collect();
-        let monitor_name: std::ffi::OsString = std::os::windows::ffi::OsStringExt::from_wide(&bytes);
+        let bytes: Vec<u16> = monitor_info
+            .szDevice
+            .iter()
+            .take_while(|b| **b != 0u16)
+            .copied()
+            .collect();
+        let monitor_name: std::ffi::OsString =
+            std::os::windows::ffi::OsStringExt::from_wide(&bytes);
         let monitor_name = monitor_name.into_string().unwrap();
         Ok(monitor_name)
     }

@@ -51,14 +51,16 @@ impl Default for Config {
 impl Config {
     fn sample() -> crate::VividResult<Self> {
         let vibrance = unsafe { crate::GPU.as_ref()?.write().get_vibrance()? };
-        let mut default = Self::default();
-        default.desktop_vibrance = vibrance;
-        default.program_settings.push(Program {
-            exe_name: "sample_program.exe".into(),
-            vibrance,
-            fullscreen_only: Some(false),
-            resolution: None,
-        });
+        let default = Self {
+            desktop_vibrance: vibrance,
+            program_settings: vec![Program {
+                exe_name: "sample_program.exe".into(),
+                vibrance,
+                fullscreen_only: Some(false),
+                resolution: None,
+            }],
+            ..Default::default()
+        };
 
         Ok(default)
     }
@@ -71,7 +73,7 @@ impl Config {
 
     fn load_file(maybe_path: Option<String>) -> crate::VividResult<std::fs::File> {
         use std::io::Write as _;
-        let path = maybe_path.map_or_else(|| Self::config_path(), |path| Ok(path.into()))?;
+        let path = maybe_path.map_or_else(Self::config_path, |path| Ok(path.into()))?;
         let res = std::fs::OpenOptions::new()
             .write(true)
             .read(true)
@@ -120,7 +122,7 @@ impl Config {
         if hwnd as u32 > 32 {
             Ok(())
         } else {
-            return Err(VividError::windows_error());
+            Err(VividError::windows_error())
         }
     }
 

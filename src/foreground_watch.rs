@@ -5,8 +5,10 @@ use winapi::{
     um::{winnt::LONG, winuser},
 };
 
+type WatchCallback = fn(&ForegroundWatcherEvent) -> VividResult<()>;
+
 lazy_static::lazy_static! {
-    static ref CALLBACKS: parking_lot::RwLock<Vec<fn(&ForegroundWatcherEvent) -> VividResult<()>>> = parking_lot::RwLock::new(vec![]);
+    static ref CALLBACKS: parking_lot::RwLock<Vec<WatchCallback>> = parking_lot::RwLock::new(vec![]);
     pub(crate) static ref SYSTEM: parking_lot::RwLock<sysinfo::System> = {
         use sysinfo::SystemExt as _;
         parking_lot::RwLock::new(
@@ -130,7 +132,7 @@ impl ForegroundWatcher {
                 );
                 let process_path: std::path::PathBuf = process.exe().into();
                 let mut process_exe: String = process.name().into();
-                if process_exe.len() == 0 {
+                if process_exe.is_empty() {
                     if let Some(exe_name) =
                         process_path.file_name().and_then(std::ffi::OsStr::to_str)
                     {
