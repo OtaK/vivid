@@ -6,12 +6,12 @@ use crate::{
 use nvapi_hi::{Display, Gpu};
 
 #[cfg(all(windows, target_pointer_width = "32"))]
-pub const LIBRARY_NAME: &[u8; 10] = b"nvapi.dll\0";
+pub const LIBRARY_NAME: &str = "nvapi.dll\0";
 #[cfg(all(windows, target_pointer_width = "64"))]
-pub const LIBRARY_NAME: &[u8; 12] = b"nvapi64.dll\0";
+pub const LIBRARY_NAME: &str = "nvapi64.dll\0";
 
 pub struct Nvidia {
-    gpu: ArcMutex<Gpu>
+    gpu: ArcMutex<Gpu>,
 }
 
 impl std::fmt::Debug for Nvidia {
@@ -25,9 +25,7 @@ impl std::fmt::Debug for Nvidia {
 impl Nvidia {
     pub fn new() -> VividResult<Self> {
         if let Some(gpu) = Gpu::enumerate()?.into_iter().next() {
-            return Ok(Self {
-                gpu: arcmutex(gpu),
-            });
+            return Ok(Self { gpu: arcmutex(gpu) });
         }
 
         Err(VividError::NoGpuDetected)

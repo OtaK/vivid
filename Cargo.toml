@@ -7,10 +7,10 @@ description = "Smol utility to change digital vibrance / saturation when a progr
 
 [package.metadata.winres]
 OriginalFileName = "Vivid.exe"
-LegalCopyright = "Copyright © Mathieu Amiot 2020"
+LegalCopyright = "Copyright © Mathieu Amiot 2021"
 FileDescription = "Vivid - Digital Vibrance Automation"
 ProductName = "Vivid"
-ProductVersion = "0.2.0"
+ProductVersion = "0.2.1"
 
 [dependencies]
 nvapi-hi = { git = "https://github.com/OtaK/nvapi-rs", branch="feature/dvc", default-features = false }
@@ -20,11 +20,28 @@ toml = "0.5"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 eyre = "0.6"
-winapi = { version = "0.3", features = ["winuser", "ntdef", "tlhelp32", "impl-default", "commctrl"] }
 sysinfo = "0.22"
 lazy_static = "1.4"
 parking_lot = "0.11"
 clap = { version = "3.0", features = ["derive"] }
+
+[dependencies.windows]
+version = "0.29"
+features = [
+    "std",
+    "alloc",
+    "Win32_Foundation",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_System_WindowsProgramming",
+    "Win32_System_Threading",
+    "Win32_System_Console",
+    "Win32_UI_Accessibility",
+    "Win32_System_LibraryLoader",
+    "Win32_Graphics_Gdi",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Controls",
+]
 
 [profile.release]
 lto = true

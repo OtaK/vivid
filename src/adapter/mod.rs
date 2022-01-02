@@ -1,24 +1,33 @@
+use windows::Win32::{
+    Foundation::{HANDLE, HINSTANCE, HWND},
+    Graphics::Gdi::{MonitorFromWindow, MONITORINFO, MONITORINFOEXW, MONITOR_DEFAULTTOPRIMARY},
+    System::LibraryLoader::{
+        DisableThreadLibraryCalls, FreeLibrary, LoadLibraryExA, LOAD_LIBRARY_AS_DATAFILE,
+        LOAD_LIBRARY_AS_IMAGE_RESOURCE,
+    },
+};
+
 use crate::error::{VividError, VividResult};
 
 mod amd;
 mod nvidia;
 
 #[inline(always)]
-fn dll_exists(path: *const winapi::ctypes::c_char) -> bool {
+fn dll_exists(path: &str) -> bool {
     let hwnd = unsafe {
-        winapi::um::libloaderapi::LoadLibraryExA(
+        LoadLibraryExA(
             path,
-            winapi::shared::ntdef::NULL,
-            winapi::um::libloaderapi::LOAD_LIBRARY_AS_DATAFILE
-                | winapi::um::libloaderapi::LOAD_LIBRARY_AS_IMAGE_RESOURCE,
+            HANDLE::default(),
+            LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE,
         )
     };
-    if hwnd.is_null() {
+
+    if hwnd == HINSTANCE::default() {
         false
     } else {
         unsafe {
-            winapi::um::libloaderapi::DisableThreadLibraryCalls(hwnd);
-            winapi::um::libloaderapi::FreeLibrary(hwnd);
+            DisableThreadLibraryCalls(hwnd);
+            FreeLibrary(hwnd);
         }
         true
     }
@@ -57,10 +66,8 @@ pub struct Gpu {
 
 impl Gpu {
     pub fn detect_gpu() -> VividResult<Self> {
-        let nvidia_exists =
-            dll_exists(nvidia::LIBRARY_NAME.as_ptr() as *const winapi::ctypes::c_char);
-        let amd_adl_exists =
-            dll_exists(amd::LIBRARY_NAME.as_ptr() as *const winapi::ctypes::c_char);
+        let nvidia_exists = dll_exists(nvidia::LIBRARY_NAME);
+        let amd_adl_exists = dll_exists(amd::LIBRARY_NAME);
 
         log::trace!(
             "Detecting driver API DLLs: AMD = {} / Nvidia = {}",
@@ -92,34 +99,39 @@ impl Gpu {
     }
 
     pub(crate) fn get_primary_monitor_name() -> VividResult<String> {
-        let primary_monitor_hwnd = unsafe {
-            winapi::um::winuser::MonitorFromWindow(
-                std::ptr::null_mut(),
-                winapi::um::winuser::MONITOR_DEFAULTTOPRIMARY,
-            )
-        };
-        let mut monitor_info = winapi::um::winuser::MONITORINFOEXW {
-            cbSize: std::mem::size_of::<winapi::um::winuser::MONITORINFOEXW>() as u32,
+        let primary_monitor_hwnd =
+            unsafe { MonitorFromWindow(HWND::default(), MONITOR_DEFAULTTOPRIMARY) };
+        let mut monitor_info = MONITORINFOEXW {
+            monitorInfo: MONITORINFO {
+                cbSize: std::mem::size_of::<MONITORINFOEXW>() as u32,
+                ..Default::default()
+            },
             ..Default::default()
         };
+
         let res = unsafe {
-            winapi::um::winuser::GetMonitorInfoW(
+            windows::Win32::Graphics::Gdi::GetMonitorInfoW(
                 primary_monitor_hwnd,
-                &mut monitor_info as *mut _ as *mut _,
+                &mut monitor_info as *mut MONITORINFOEXW as *mut _,
             )
         };
-        if res != winapi::shared::minwindef::TRUE {
+
+        if !res.as_bool() {
             return Err(VividError::NoDisplayDetected);
         }
+
         let bytes: Vec<u16> = monitor_info
             .szDevice
             .iter()
             .take_while(|b| **b != 0u16)
             .copied()
             .collect();
+
         let monitor_name: std::ffi::OsString =
             std::os::windows::ffi::OsStringExt::from_wide(&bytes);
+
         let monitor_name = monitor_name.into_string().unwrap();
+
         Ok(monitor_name)
     }
 

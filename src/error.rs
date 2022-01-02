@@ -24,6 +24,8 @@ pub enum VividError {
     WindowsMessageLoopError(std::io::Error),
     #[error(transparent)]
     WindowsOtherError(std::io::Error),
+    #[error(transparent)]
+    WindowsError(#[from] windows::core::Error),
     #[error(r#"Vivid detected both AMD and Nvidia drivers on your system.
 Please launch the app with the appropriate flag to choose which driver you use to display."#r)]
     DualDriversDetected,

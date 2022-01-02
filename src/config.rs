@@ -1,9 +1,4 @@
 use crate::error::VividError;
-use winapi::{
-    shared::ntdef::NULL,
-    um::{shellapi::ShellExecuteA, winuser::SW_SHOWNORMAL},
-};
-
 pub const DEFAULT_CONFIG_FILENAME: &str = "vivid.toml";
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -107,25 +102,24 @@ impl Config {
     /// Launches windows standard editor for this file.
     pub fn edit() -> crate::VividResult<()> {
         let _ = Self::load_file(None)?;
-        // SAFETY: The following unwraps are safe because:
+        // SAFETY: The following unwrap is safe because:
         // - Self::config_path() fails on not returning a valid UTF-8 path that exists, and this error is handled
         // - Thus the Self::config_path()?.to_str() is infaillible
-        // - As the config_path() function also checks if the string is valid UTF-8
-        //   that *doesn't* contain NULL bytes, Cstring::new() is also guaranteed to succeed
-        let file_path = std::ffi::CString::new(Self::config_path()?.to_str().unwrap().as_bytes()).unwrap();
+        let config_path = Self::config_path()?;
+        let file_path = config_path.to_str().unwrap();
         // SAFETY: Trivial call to ShellExecuteA; As long as the lpFile parameter is a valid C-style string pointer, we're good
         let hwnd = unsafe {
-            ShellExecuteA(
-                NULL as _,
-                NULL as _,
-                file_path.as_ptr(),
-                NULL as _,
-                NULL as _,
-                SW_SHOWNORMAL,
+            windows::Win32::UI::Shell::ShellExecuteA(
+                windows::Win32::Foundation::HWND::default(),
+                windows::Win32::Foundation::PSTR::default(),
+                file_path,
+                windows::Win32::Foundation::PSTR::default(),
+                windows::Win32::Foundation::PSTR::default(),
+                windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL as i32,
             )
         };
 
-        if hwnd as u32 > 32 {
+        if hwnd as u32 > windows::Win32::System::WindowsProgramming::HINSTANCE_ERROR {
             Ok(())
         } else {
             Err(VividError::windows_error())

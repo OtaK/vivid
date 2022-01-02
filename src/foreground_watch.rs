@@ -1,9 +1,15 @@
-use crate::error::{VividError, VividResult, WindowsHookError};
-use winapi::shared::windef::HWND;
-use winapi::{
-    shared::{minwindef::DWORD, ntdef::NULL, windef},
-    um::{winnt::LONG, winuser},
+use windows::Win32::{
+    Foundation::{HINSTANCE, HWND},
+    UI::{
+        Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVENTHOOK, WINEVENTPROC},
+        WindowsAndMessaging::{
+            GetWindowThreadProcessId, EVENT_SYSTEM_FOREGROUND, WINEVENT_OUTOFCONTEXT,
+            WINEVENT_SKIPOWNPROCESS,
+        },
+    },
 };
+
+use crate::error::{VividError, VividResult, WindowsHookError};
 
 type WatchCallback = fn(&ForegroundWatcherEvent) -> VividResult<()>;
 
@@ -31,8 +37,8 @@ pub struct ForegroundWatcherEvent {
 #[derive(Default, Clone)]
 pub struct ForegroundWatcher {
     registered: bool,
-    hook: Option<windef::HWINEVENTHOOK>,
-    proc: winuser::WINEVENTPROC,
+    hook: Option<HWINEVENTHOOK>,
+    proc: WINEVENTPROC,
 }
 
 impl ForegroundWatcher {
@@ -54,18 +60,18 @@ impl ForegroundWatcher {
         // stays alive as long as the event is registered & active, this will work properly
         // We also make sure to unhook the callback when the struct is dropped.
         let inner_hook = unsafe {
-            winuser::SetWinEventHook(
-                winuser::EVENT_SYSTEM_FOREGROUND,
-                winuser::EVENT_SYSTEM_FOREGROUND,
-                NULL as _,
+            SetWinEventHook(
+                EVENT_SYSTEM_FOREGROUND,
+                EVENT_SYSTEM_FOREGROUND,
+                HINSTANCE::default(),
                 self.proc,
                 0,
                 0,
-                winuser::WINEVENT_OUTOFCONTEXT | winuser::WINEVENT_SKIPOWNPROCESS,
+                WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS,
             )
         };
 
-        if inner_hook != NULL as _ {
+        if inner_hook != HWINEVENTHOOK::default() {
             self.hook = Some(inner_hook);
             self.registered = true;
             log::trace!("ForegroundWatcher::register() -> successful");
@@ -81,7 +87,7 @@ impl ForegroundWatcher {
     pub fn unregister(&mut self) -> VividResult<()> {
         if let Some(hook) = self.hook.take() {
             // SAFETY: This is 100% safe as the hooks are guaranteed valid & existing, also conforming to the ABI
-            if unsafe { winuser::UnhookWinEvent(hook) } != 0 {
+            if unsafe { UnhookWinEvent(hook) }.as_bool() {
                 log::trace!("ForegroundWatcher::unregister() -> successful");
                 self.proc = None;
                 self.registered = false;
@@ -100,13 +106,13 @@ impl ForegroundWatcher {
     }
 
     extern "system" fn event_proc(
-        event_hook: windef::HWINEVENTHOOK,
-        event: DWORD,
+        event_hook: HWINEVENTHOOK,
+        event: u32,
         hwnd: HWND,
-        id_object: LONG,
-        id_child: LONG,
-        id_event_thread: DWORD,
-        dwms_event_time: DWORD,
+        id_object: i32,
+        id_child: i32,
+        id_event_thread: u32,
+        dwms_event_time: u32,
     ) {
         use sysinfo::{ProcessExt as _, SystemExt as _};
         log::trace!(
@@ -121,16 +127,14 @@ impl ForegroundWatcher {
         );
         let mut process_id = 0u32;
         // SAFETY: This is a trivial function to call, and is safe to call as it takes a standard u32
-        let _ = unsafe { winapi::um::winuser::GetWindowThreadProcessId(hwnd, &mut process_id) };
+        let _ = unsafe { GetWindowThreadProcessId(hwnd, &mut process_id) };
         let process_id = process_id as usize;
         log::trace!("Found process id #{} from hwnd", process_id);
 
         let _ = (*SYSTEM).write().refresh_process(process_id);
 
-        let mut inspection_result: Option<ForegroundWatcherEvent> = (*SYSTEM)
-            .read()
-            .process(process_id)
-            .map(move |process| {
+        let mut inspection_result: Option<ForegroundWatcherEvent> =
+            (*SYSTEM).read().process(process_id).map(move |process| {
                 log::trace!(
                     "Found process {} [{}]",
                     process.name(),

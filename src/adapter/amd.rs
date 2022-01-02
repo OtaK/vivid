@@ -1,9 +1,9 @@
 use crate::error::VividResult;
 
 #[cfg(all(windows, target_pointer_width = "32"))]
-pub const LIBRARY_NAME: &[u8; 13] = b"atiadlxx.dll\0";
+pub const LIBRARY_NAME: &str = b"atiadlxx.dll\0";
 #[cfg(all(windows, target_pointer_width = "64"))]
-pub const LIBRARY_NAME: &[u8; 13] = b"atiadlxy.dll\0";
+pub const LIBRARY_NAME: &str = "atiadlxy.dll\0";
 #[derive(Debug)]
 pub struct Amd {}
 

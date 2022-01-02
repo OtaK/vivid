@@ -9,10 +9,10 @@ mod adapter;
 mod config;
 mod foreground_callback;
 mod foreground_watch;
-mod w32_msgloop;
-// mod w32_notifyicon;
 #[cfg(debug_assertions)]
 mod w32_ctrlc;
+mod w32_msgloop;
+mod w32_notifyicon;
 
 mod error;
 
@@ -61,7 +61,7 @@ fn main() -> error::VividResult<()> {
     }
 
     unsafe {
-        CONFIG = Ok(config::Config::load(opts.config_file)?);
+        CONFIG = Ok(config::Config::load(opts.config_file).unwrap_or_default());
     }
 
     let adapter = if opts.nvidia {
@@ -87,7 +87,7 @@ fn main() -> error::VividResult<()> {
     watcher.register()?;
     log::trace!("is watcher registered? -> {}", watcher.is_registered());
 
-    //w32_notifyicon::register()?;
+    // w32_notifyicon::register()?;
 
     let mut msg = unsafe { std::mem::zeroed() };
     #[cfg(debug_assertions)]

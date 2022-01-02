@@ -1,4 +1,8 @@
 use crate::error::VividResult;
+use windows::Win32::UI::Shell::{
+    SHQueryUserNotificationState, QUNS_ACCEPTS_NOTIFICATIONS, QUNS_PRESENTATION_MODE,
+    QUNS_RUNNING_D3D_FULL_SCREEN,
+};
 
 #[no_mangle]
 pub fn handler(args: &crate::foreground_watch::ForegroundWatcherEvent) -> VividResult<()> {
@@ -16,22 +20,17 @@ pub fn handler(args: &crate::foreground_watch::ForegroundWatcherEvent) -> VividR
 
     let apply = if fullscreen_only {
         log::trace!("{} requires fullscreen, detecting...", args.process_exe);
-        use winapi::um::shellapi;
-        let mut notification_state: shellapi::QUERY_USER_NOTIFICATION_STATE =
-            shellapi::QUERY_USER_NOTIFICATION_STATE::default();
-        // SAFETY: The following call is safe if winapi initializes the QUERY_USER_NOTIFICATION_STATE struct properly
-        // which it does AFAIK
-        let api_result = unsafe { shellapi::SHQueryUserNotificationState(&mut notification_state) };
-        if api_result == winapi::shared::winerror::S_OK {
-            log::trace!("Found notification state: {}", notification_state);
-            matches!(
-                notification_state,
-                shellapi::QUNS_RUNNING_D3D_FULL_SCREEN
-                    | shellapi::QUNS_PRESENTATION_MODE
-                    | shellapi::QUNS_ACCEPTS_NOTIFICATIONS
-            )
-        } else {
-            false
+        match unsafe { SHQueryUserNotificationState() } {
+            Ok(notification_state) => {
+                log::trace!("Found notification state: {}", notification_state);
+                matches!(
+                    notification_state,
+                    QUNS_RUNNING_D3D_FULL_SCREEN
+                        | QUNS_PRESENTATION_MODE
+                        | QUNS_ACCEPTS_NOTIFICATIONS
+                )
+            }
+            Err(_) => false,
         }
     } else {
         true
