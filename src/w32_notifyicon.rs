@@ -1,24 +1,25 @@
+// NOTE: This will probably be ditched altogether as it means creating a GUI window, which
+// would shoot up memory/cpu usage by a LOT compared to the current state of things.
+// Really unsure I want to do that kind of thing as I want to tool to keep being lean
+
 use std::ffi::OsStr;
 
 use windows::{
     core::GUID,
-    Win32::UI::{
+    Win32::{UI::{
         Controls::{LoadIconMetric, LIM_SMALL},
-        Input::KeyboardAndMouse::GetActiveWindow,
         Shell::{
-            Shell_NotifyIconW, NIF_GUID, NIF_ICON, NIF_SHOWTIP, NIF_TIP, NIIF_NOSOUND,
+            NIF_GUID, NIF_ICON, NIF_SHOWTIP, NIF_TIP, NIIF_NOSOUND,
             NIIF_RESPECT_QUIET_TIME, NIIF_USER, NIM_ADD, NIM_SETVERSION, NIS_HIDDEN,
-            NOTIFYICONDATAW, NOTIFYICON_VERSION_4,
+            NOTIFYICONDATAW, NOTIFYICON_VERSION_4, Shell_NotifyIconW,
         },
         WindowsAndMessaging::IDI_APPLICATION,
-    },
+    }, Foundation::HWND},
 };
 
 #[allow(dead_code)]
-pub fn register() -> crate::VividResult<()> {
+pub fn show(hwnd: HWND) -> crate::VividResult<()> {
     use std::os::windows::ffi::OsStrExt as _;
-
-    let hwnd = unsafe { GetActiveWindow() };
 
     let mut notify_icon_data = NOTIFYICONDATAW {
         hWnd: hwnd,

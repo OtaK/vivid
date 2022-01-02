@@ -12,10 +12,8 @@ mod foreground_watch;
 #[cfg(debug_assertions)]
 mod w32_ctrlc;
 mod w32_msgloop;
-mod w32_notifyicon;
 
 mod error;
-
 use self::error::*;
 
 pub(crate) type ArcMutex<T> = std::sync::Arc<parking_lot::Mutex<T>>;
@@ -87,9 +85,7 @@ fn main() -> error::VividResult<()> {
     watcher.register()?;
     log::trace!("is watcher registered? -> {}", watcher.is_registered());
 
-    // w32_notifyicon::register()?;
-
-    let mut msg = unsafe { std::mem::zeroed() };
+    let mut msg = windows::Win32::UI::WindowsAndMessaging::MSG::default();
     #[cfg(debug_assertions)]
     unsafe {
         w32_ctrlc::init_ctrlc()?;
