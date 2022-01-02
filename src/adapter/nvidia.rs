@@ -11,18 +11,13 @@ pub const LIBRARY_NAME: &[u8; 10] = b"nvapi.dll\0";
 pub const LIBRARY_NAME: &[u8; 12] = b"nvapi64.dll\0";
 
 pub struct Nvidia {
-    gpu: ArcMutex<Gpu>,
-    displays: Vec<Display>,
+    gpu: ArcMutex<Gpu>
 }
-
-unsafe impl Send for Nvidia {}
-unsafe impl Sync for Nvidia {}
 
 impl std::fmt::Debug for Nvidia {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Nvidia")
-            .field("gpu", &"[OPAQUE]")
-            .field("displays", &self.displays)
+            .field("gpu", &"[NVAPI-OPAQUE]")
             .finish()
     }
 }
@@ -30,21 +25,19 @@ impl std::fmt::Debug for Nvidia {
 impl Nvidia {
     pub fn new() -> VividResult<Self> {
         if let Some(gpu) = Gpu::enumerate()?.into_iter().next() {
-            let displays = gpu.connected_displays()?;
             return Ok(Self {
                 gpu: arcmutex(gpu),
-                displays,
             });
         }
 
         Err(VividError::NoGpuDetected)
     }
 
-    fn get_target_display(&mut self) -> VividResult<&Display> {
-        self.displays = self.gpu.lock().connected_displays()?;
+    fn get_target_display(&mut self) -> VividResult<Display> {
+        let displays = self.gpu.lock().connected_displays()?;
         let target_display = super::Gpu::get_primary_monitor_name()?;
-        self.displays
-            .iter()
+        displays
+            .into_iter()
             .find(|display| display.display_name == target_display)
             .ok_or(VividError::NoDisplayDetected)
     }

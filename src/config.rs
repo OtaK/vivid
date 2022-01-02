@@ -50,6 +50,7 @@ impl Default for Config {
 
 impl Config {
     fn sample() -> crate::VividResult<Self> {
+        // SAFETY: Data safety is ensured by the fact that the crate::GPU mutable static is wrapped in a RwLock
         let vibrance = unsafe { crate::GPU.as_ref()?.write().get_vibrance()? };
         let default = Self {
             desktop_vibrance: vibrance,
@@ -106,8 +107,13 @@ impl Config {
     /// Launches windows standard editor for this file.
     pub fn edit() -> crate::VividResult<()> {
         let _ = Self::load_file(None)?;
-        let file_path =
-            std::ffi::CString::new(Self::config_path()?.to_str().unwrap().as_bytes()).unwrap();
+        // SAFETY: The following unwraps are safe because:
+        // - Self::config_path() fails on not returning a valid UTF-8 path that exists, and this error is handled
+        // - Thus the Self::config_path()?.to_str() is infaillible
+        // - As the config_path() function also checks if the string is valid UTF-8
+        //   that *doesn't* contain NULL bytes, Cstring::new() is also guaranteed to succeed
+        let file_path = std::ffi::CString::new(Self::config_path()?.to_str().unwrap().as_bytes()).unwrap();
+        // SAFETY: Trivial call to ShellExecuteA; As long as the lpFile parameter is a valid C-style string pointer, we're good
         let hwnd = unsafe {
             ShellExecuteA(
                 NULL as _,

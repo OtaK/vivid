@@ -5,9 +5,11 @@ pub fn handler(args: &crate::foreground_watch::ForegroundWatcherEvent) -> VividR
     let gpu = unsafe { crate::GPU.as_ref()? };
     let previous_vibrance = gpu.write().get_vibrance()?;
     log::trace!("callback args: {:#?}", args);
+    // SAFETY: Data safety is ensured by the fact that the crate::GPU mutable static is wrapped in a RwLock
     let (vibrance, fullscreen_only) = unsafe { crate::CONFIG.as_ref()? }
         .vibrance_for_program(&args.process_exe)
         .map_or_else(
+            // SAFETY: Data safety is ensured by the fact that the crate::GPU mutable static is wrapped in a RwLock
             || VividResult::Ok((unsafe { crate::CONFIG.as_ref()? }.default_vibrance(), false)),
             Ok,
         )?;
@@ -17,6 +19,8 @@ pub fn handler(args: &crate::foreground_watch::ForegroundWatcherEvent) -> VividR
         use winapi::um::shellapi;
         let mut notification_state: shellapi::QUERY_USER_NOTIFICATION_STATE =
             shellapi::QUERY_USER_NOTIFICATION_STATE::default();
+        // SAFETY: The following call is safe if winapi initializes the QUERY_USER_NOTIFICATION_STATE struct properly
+        // which it does AFAIK
         let api_result = unsafe { shellapi::SHQueryUserNotificationState(&mut notification_state) };
         if api_result == winapi::shared::winerror::S_OK {
             log::trace!("Found notification state: {}", notification_state);

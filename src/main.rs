@@ -50,10 +50,6 @@ struct Opts {
 pub static mut GPU: VividResult<parking_lot::RwLock<adapter::Gpu>> = Err(VividError::NoGpuDetected);
 pub static mut CONFIG: VividResult<config::Config> = Err(VividError::NoConfigurationLoaded);
 
-// lazy_static::lazy_static! {
-//     pub static ref CONFIG: config::Config = config::Config::load().unwrap_or_default();
-// }
-
 fn main() -> error::VividResult<()> {
     use clap::Parser as _;
     let opts = Opts::parse();
@@ -65,7 +61,7 @@ fn main() -> error::VividResult<()> {
     }
 
     unsafe {
-        CONFIG = config::Config::load(opts.config_file);
+        CONFIG = Ok(config::Config::load(opts.config_file)?);
     }
 
     let adapter = if opts.nvidia {

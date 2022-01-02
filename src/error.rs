@@ -40,7 +40,7 @@ Please launch the app with the appropriate flag to choose which driver you use t
     #[error(transparent)]
     NvAPIError(#[from] nvapi_hi::sys::Status),
     #[error(transparent)]
-    Other(#[from] anyhow::Error),
+    Other(#[from] eyre::Report),
 }
 
 impl VividError {

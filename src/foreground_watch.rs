@@ -13,7 +13,8 @@ lazy_static::lazy_static! {
         use sysinfo::SystemExt as _;
         parking_lot::RwLock::new(
             sysinfo::System::new_with_specifics(
-                sysinfo::RefreshKind::default().with_processes(sysinfo::ProcessRefreshKind::everything())
+                sysinfo::RefreshKind::default()
+                    .with_processes(sysinfo::ProcessRefreshKind::everything())
             )
         )
     };
@@ -49,6 +50,9 @@ impl ForegroundWatcher {
 
     pub fn register(&mut self) -> VividResult<()> {
         self.proc = Some(Self::event_proc);
+        // SAFETY: As long as the callback is an `extern "system" fn` that
+        // stays alive as long as the event is registered & active, this will work properly
+        // We also make sure to unhook the callback when the struct is dropped.
         let inner_hook = unsafe {
             winuser::SetWinEventHook(
                 winuser::EVENT_SYSTEM_FOREGROUND,
@@ -76,6 +80,7 @@ impl ForegroundWatcher {
 
     pub fn unregister(&mut self) -> VividResult<()> {
         if let Some(hook) = self.hook.take() {
+            // SAFETY: This is 100% safe as the hooks are guaranteed valid & existing, also conforming to the ABI
             if unsafe { winuser::UnhookWinEvent(hook) } != 0 {
                 log::trace!("ForegroundWatcher::unregister() -> successful");
                 self.proc = None;
@@ -94,7 +99,7 @@ impl ForegroundWatcher {
         Err(WindowsHookError::NoHookToUnRegister(std::io::Error::last_os_error()).into())
     }
 
-    unsafe extern "system" fn event_proc(
+    extern "system" fn event_proc(
         event_hook: windef::HWINEVENTHOOK,
         event: DWORD,
         hwnd: HWND,
@@ -115,7 +120,8 @@ impl ForegroundWatcher {
             dwms_event_time
         );
         let mut process_id = 0u32;
-        let _ = winapi::um::winuser::GetWindowThreadProcessId(hwnd, &mut process_id);
+        // SAFETY: This is a trivial function to call, and is safe to call as it takes a standard u32
+        let _ = unsafe { winapi::um::winuser::GetWindowThreadProcessId(hwnd, &mut process_id) };
         let process_id = process_id as usize;
         log::trace!("Found process id #{} from hwnd", process_id);
 
