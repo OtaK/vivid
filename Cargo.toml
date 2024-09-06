@@ -17,7 +17,7 @@ nvapi-hi = { git = "https://github.com/OtaK/nvapi-rs", branch="feature/dvc", def
 pretty_env_logger = "0.4"
 log = "0.4"
 toml = "0.5"
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0.200", features = ["derive"] }
 thiserror = "1.0"
 anyhow = "1.0"
 winapi = { version = "0.3", features = ["winuser", "ntdef", "tlhelp32", "impl-default", "commctrl"] }
