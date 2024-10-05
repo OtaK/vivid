@@ -21,7 +21,7 @@ serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 anyhow = "1.0"
 winapi = { version = "0.3", features = ["winuser", "ntdef", "tlhelp32", "impl-default", "commctrl"] }
-sysinfo = "0.18"
+sysinfo = "0.32"
 lazy_static = "1.4"
 parking_lot = "0.11"
 structopt = { version = "0.3", features = ["paw"], default-features = false }
